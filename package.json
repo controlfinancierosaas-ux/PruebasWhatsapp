@@ -12,7 +12,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.48.1",
     "@whiskeysockets/baileys": "^6.7.9",
-    "next": "15.1.6",
+    "next": "15.2.0",
     "openai": "^4.82.0",
     "pino": "^9.6.0",
     "qrcode": "^1.5.4",
