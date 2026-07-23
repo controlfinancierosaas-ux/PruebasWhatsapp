@@ -7,15 +7,20 @@ const openai = new OpenAI({
   apiKey: process.env.OPENROUTER_API_KEY,
 });
 
+const DEFAULT_MODEL = 'google/gemini-2.0-flash-001';
+
 export const generateAIResponse = async (conversationId: string, userMessage: string) => {
   try {
-    // Fetch last 5 messages for context
+    const model = process.env.AI_MODEL || DEFAULT_MODEL;
+    console.log(`[OpenRouter] Using model: ${model}`);
+
+    // Fetch last 10 messages for better context
     const { data: history } = await supabaseAdmin
       .from('messages')
       .select('role, content')
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: false })
-      .limit(5);
+      .limit(10);
 
     const messages: any[] = [
       { role: 'system', content: SYSTEM_PROMPT },
@@ -24,13 +29,22 @@ export const generateAIResponse = async (conversationId: string, userMessage: st
     ];
 
     const completion = await openai.chat.completions.create({
-      model: 'google/gemini-2.0-flash-001',
+      model,
       messages,
+      temperature: 0.7,
+      max_tokens: 500,
     });
 
-    return completion.choices[0].message.content;
-  } catch (error) {
-    console.error('Error in OpenRouter:', error);
+    const response = completion.choices[0].message.content;
+    if (!response) {
+      console.warn('[OpenRouter] Received empty response from model');
+    }
+    return response;
+  } catch (error: any) {
+    console.error('[OpenRouter] Error:', error?.message || error);
+    if (error?.response?.data) {
+      console.error('[OpenRouter] API Error details:', JSON.stringify(error.response.data));
+    }
     return null;
   }
 };
