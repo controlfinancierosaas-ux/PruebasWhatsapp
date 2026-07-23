@@ -9,7 +9,13 @@ Se han realizado las siguientes correcciones y mejoras solicitadas:
 - **Interfaz (DashboardHeader):** Se añadió un interruptor maestro en la cabecera del sistema que permite activar o desactivar la IA para todos los chats simultáneamente.
 - **Lógica de Mensajes (Handler):** Se actualizó `handleMessage` para que respete tanto el interruptor global como el modo individual de cada chat. Si la IA Global está apagada, no se generarán respuestas automáticas independientemente de la configuración individual.
 
-### 2. Diagnóstico de Respuestas del Bot
+### 2. Gestión de Conexión (Desvinculación y Reconexión)
+- **Interfaz:** Se mejoró el botón de desconexión para que sea una acción explícita de "Desvincular WhatsApp".
+- **Lógica de Backend:** Al desvincular, se eliminan las credenciales de sesión en Supabase y se marca el estado como `disconnected`.
+- **Worker (Watchdog):** El bot ahora monitorea el estado en la base de datos. Si detecta una desvinculación manual, ejecuta un `logout()` de la sesión de WhatsApp, lo que provoca que el sistema genere un nuevo código QR automáticamente para permitir una nueva conexión.
+- **Flujo:** Desvincular -> El sistema vuelve a la pantalla de QR -> Escanear nuevo QR para reconectar.
+
+### 3. Diagnóstico de Respuestas del Bot
 - Se ha añadido logging detallado en `handler.ts` y `openrouter.ts` para rastrear el flujo de mensajes y detectar por qué el bot podría no estar respondiendo.
 - **Posible causa:** Si estás enviando mensajes desde el mismo número vinculado (Linked Device), Baileys los marca como `fromMe: true` y el bot los ignora por seguridad para evitar bucles infinitos. Se recomienda probar enviando mensajes desde un número externo.
 

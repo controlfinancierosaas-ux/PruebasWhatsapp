@@ -34,24 +34,28 @@ export const initWhatsApp = async () => {
     if (qr) {
       console.log('New QR code received');
       const qrBase64 = await QRCode.toDataURL(qr);
-      const { error } = await supabaseAdmin.from('connection_state').upsert({ 
+      await supabaseAdmin.from('connection_state').upsert({ 
         id: 1,
         status: 'qr', 
         qr_string: qrBase64,
         updated_at: new Date().toISOString()
       });
-      if (error) console.error('Error updating QR in Supabase:', error);
     }
 
     if (connection === 'close') {
-      const shouldReconnect = (lastDisconnect?.error as any)?.output?.statusCode !== DisconnectReason.loggedOut;
-      console.log('Connection closed. Reconnecting:', shouldReconnect);
+      const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
+      const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+      console.log(`Connection closed. Status: ${statusCode}. Reconnecting: ${shouldReconnect}`);
       
-      await supabaseAdmin.from('connection_state').upsert({ 
-        id: 1,
-        status: 'disconnected',
-        updated_at: new Date().toISOString()
-      });
+      if (statusCode === DisconnectReason.loggedOut) {
+        await supabaseAdmin.from('connection_state').upsert({ 
+          id: 1,
+          status: 'disconnected',
+          phone: null,
+          qr_string: null,
+          updated_at: new Date().toISOString()
+        });
+      }
 
       if (shouldReconnect) {
         initWhatsApp();
@@ -67,6 +71,15 @@ export const initWhatsApp = async () => {
       });
     }
   });
+
+  // Watchdog to detect manual logout from DB
+  setInterval(async () => {
+    const { data } = await supabaseAdmin.from('connection_state').select('status').eq('id', 1).single();
+    if (data?.status === 'disconnected' && sock.user) {
+      console.log('Manual disconnect detected from DB. Logging out WhatsApp session...');
+      await sock.logout();
+    }
+  }, 10000);
 
   sock.ev.on('messages.upsert', async ({ messages, type }: { messages: WAMessage[], type: MessageUpsertType }) => {
     if (type === 'notify') {
