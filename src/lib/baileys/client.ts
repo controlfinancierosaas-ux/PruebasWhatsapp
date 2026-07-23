@@ -101,21 +101,57 @@ export const initWhatsApp = async () => {
     if (pending && pending.length > 0) {
       for (const item of pending) {
         try {
-          await sock.sendMessage(`${item.phone}@s.whatsapp.net`, { text: item.content });
-          await supabaseAdmin.from('outbox').update({ sent: true }).eq('id', item.id);
+          console.log(`[Outbox] Sending message to ${item.phone}...`);
           
-          // Insert into messages table as human message
-          await supabaseAdmin.from('messages').insert({
-            conversation_id: item.conversation_id,
-            role: 'human',
-            content: item.content
-          });
+          // 1. Resolve conversation_id if missing
+          let conversationId = item.conversation_id;
+          if (!conversationId) {
+            const { data: conv } = await supabaseAdmin
+              .from('conversations')
+              .select('id')
+              .eq('phone', item.phone)
+              .maybeSingle();
+            
+            if (conv) {
+              conversationId = conv.id;
+            } else {
+              // Create conversation if it doesn't exist
+              const { data: newConv } = await supabaseAdmin
+                .from('conversations')
+                .insert({ phone: item.phone, name: item.phone, mode: 'HUMAN' })
+                .select()
+                .single();
+              conversationId = newConv?.id;
+            }
+          }
+
+          // 2. Send message
+          await sock.sendMessage(`${item.phone}@s.whatsapp.net`, { text: item.content });
+          
+          // 3. Mark as sent and link conversation_id
+          await supabaseAdmin.from('outbox').update({ 
+            sent: true, 
+            conversation_id: conversationId 
+          }).eq('id', item.id);
+          
+          // 4. Record in messages history
+          if (conversationId) {
+            await supabaseAdmin.from('messages').insert({
+              conversation_id: conversationId,
+              role: 'human',
+              content: item.content
+            });
+            
+            await supabaseAdmin.from('conversations').update({ 
+              last_message_at: new Date().toISOString() 
+            }).eq('id', conversationId);
+          }
         } catch (error) {
-          console.error('Error sending outbox message:', error);
+          console.error('[Outbox] Error sending message:', error);
         }
       }
     }
-  }, 2000);
+  }, 3000);
 
   return sock;
 };

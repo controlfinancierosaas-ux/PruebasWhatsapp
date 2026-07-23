@@ -15,7 +15,16 @@ Se han realizado las siguientes correcciones y mejoras solicitadas:
 - **Worker (Watchdog):** El bot ahora monitorea el estado en la base de datos. Si detecta una desvinculación manual, ejecuta un `logout()` de la sesión de WhatsApp, lo que provoca que el sistema genere un nuevo código QR automáticamente para permitir una nueva conexión.
 - **Flujo:** Desvincular -> El sistema vuelve a la pantalla de QR -> Escanear nuevo QR para reconectar.
 
-### 3. Diagnóstico de Respuestas del Bot
+### 3. Envío Externo de Mensajes (API vía Supabase)
+- **Funcionalidad:** Ahora es posible enviar mensajes de WhatsApp desde cualquier sistema externo simplemente insertando un registro en la tabla `outbox` de Supabase.
+- **Lógica:** El bot escanea esta tabla cada 3 segundos. Si encuentra un mensaje con `sent: false`, lo envía automáticamente.
+- **Automatización:** Si el número de teléfono no existe en la lista de conversaciones, el sistema la crea automáticamente para mantener el historial.
+- **Campos Requeridos en `outbox`:**
+  - `phone`: Número de teléfono (ej: `584121234567`, sin el + ni @s.whatsapp.net).
+  - `content`: Texto del mensaje.
+  - `sent`: `false` (por defecto).
+
+### 4. Diagnóstico de Respuestas del Bot
 - Se ha añadido logging detallado en `handler.ts` y `openrouter.ts` para rastrear el flujo de mensajes y detectar por qué el bot podría no estar respondiendo.
 - **Posible causa:** Si estás enviando mensajes desde el mismo número vinculado (Linked Device), Baileys los marca como `fromMe: true` y el bot los ignora por seguridad para evitar bucles infinitos. Se recomienda probar enviando mensajes desde un número externo.
 
