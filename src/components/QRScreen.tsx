@@ -9,7 +9,7 @@ export default function QRScreen({ qr, status }: { qr: string | null; status: st
         {status === 'qr' && qr ? (
           <div className="flex flex-col items-center">
             <img src={qr} alt="WhatsApp QR Code" className="mb-6 h-64 w-64 rounded-lg border p-2" />
-            <p className="text-gray-600">Escanea este código desde WhatsApp > Dispositivos vinculados</p>
+            <p className="text-gray-600">Escanea este código desde WhatsApp &gt; Dispositivos vinculados</p>
           </div>
         ) : (
           <div className="flex flex-col items-center py-10">

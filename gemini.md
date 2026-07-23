@@ -7,6 +7,7 @@ Se ha implementado el proyecto completo siguiendo el stack solicitado:
 ### Avances Realizados:
 - **Corrección de Build (Vercel):**
   - Se instaló `@tailwindcss/postcss` y se actualizó `postcss.config.mjs` para solucionar el error de compilación de Tailwind CSS 4.
+  - Se escapó el carácter `>` en `QRScreen.tsx` para cumplir con las reglas de JSX.
 - **Base de Datos (Supabase):**
   - Definición de esquema para `conversations`, `messages`, `connection_state`, `outbox` y `baileys_auth`.
   - Configuración del cliente `supabase.ts` con soporte para service role.
