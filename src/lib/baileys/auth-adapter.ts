@@ -8,8 +8,14 @@ export const useSupabaseAuth = async (id: string): Promise<{ state: Authenticati
   };
 
   const readData = async (key: string) => {
-    const { data } = await supabaseAdmin.from('baileys_auth').select('data').eq('id', key).single();
-    return data ? JSON.parse(JSON.stringify(data.data), BufferJSON.reviver) : null;
+    try {
+      const { data, error } = await supabaseAdmin.from('baileys_auth').select('data').eq('id', key).maybeSingle();
+      if (error) throw error;
+      return data ? JSON.parse(JSON.stringify(data.data), BufferJSON.reviver) : null;
+    } catch (e) {
+      console.error('Error reading auth data:', e);
+      return null;
+    }
   };
 
   const removeData = async (key: string) => {

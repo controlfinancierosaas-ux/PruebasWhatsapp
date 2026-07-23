@@ -32,34 +32,39 @@ export const initWhatsApp = async () => {
     const { connection, lastDisconnect, qr } = update;
 
     if (qr) {
+      console.log('New QR code received');
       const qrBase64 = await QRCode.toDataURL(qr);
-      await supabaseAdmin.from('connection_state').update({ 
+      const { error } = await supabaseAdmin.from('connection_state').upsert({ 
+        id: 1,
         status: 'qr', 
         qr_string: qrBase64,
         updated_at: new Date().toISOString()
-      }).eq('id', 1);
+      });
+      if (error) console.error('Error updating QR in Supabase:', error);
     }
 
     if (connection === 'close') {
       const shouldReconnect = (lastDisconnect?.error as any)?.output?.statusCode !== DisconnectReason.loggedOut;
-      console.log('connection closed due to ', lastDisconnect?.error, ', reconnecting ', shouldReconnect);
+      console.log('Connection closed. Reconnecting:', shouldReconnect);
       
-      await supabaseAdmin.from('connection_state').update({ 
+      await supabaseAdmin.from('connection_state').upsert({ 
+        id: 1,
         status: 'disconnected',
         updated_at: new Date().toISOString()
-      }).eq('id', 1);
+      });
 
       if (shouldReconnect) {
         initWhatsApp();
       }
     } else if (connection === 'open') {
-      console.log('opened connection');
-      await supabaseAdmin.from('connection_state').update({ 
+      console.log('Connection opened successfully');
+      await supabaseAdmin.from('connection_state').upsert({ 
+        id: 1,
         status: 'connected', 
         qr_string: null,
         phone: sock.user?.id.split(':')[0],
         updated_at: new Date().toISOString()
-      }).eq('id', 1);
+      });
     }
   });
 

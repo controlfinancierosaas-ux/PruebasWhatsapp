@@ -6,8 +6,13 @@ export async function GET() {
     .from('connection_state')
     .select('*')
     .eq('id', 1)
-    .single();
+    .maybeSingle();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  
+  if (!data) {
+    return NextResponse.json({ status: 'disconnected', qr_string: null });
+  }
+
   return NextResponse.json(data);
 }
