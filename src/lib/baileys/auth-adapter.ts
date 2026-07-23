@@ -1,5 +1,5 @@
 import { AuthenticationCreds, AuthenticationState, SignalDataTypeMap, initAuthCreds, BufferJSON } from '@whiskeysockets/baileys';
-import { supabaseAdmin } from './supabase';
+import { supabaseAdmin } from '../supabase';
 
 export const useSupabaseAuth = async (id: string): Promise<{ state: AuthenticationState; saveCreds: () => Promise<void> }> => {
   const writeData = async (data: any, key: string) => {
