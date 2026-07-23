@@ -38,10 +38,13 @@ export const useSupabaseAuth = async (id: string): Promise<{ state: Authenticati
         set: async (data) => {
           const tasks: Promise<void>[] = [];
           for (const category in data) {
-            for (const id_key in data[category as keyof SignalDataTypeMap]) {
-              const value = data[category as keyof SignalDataTypeMap][id_key];
-              const key = `${id}:${category}:${id_key}`;
-              tasks.push(value ? writeData(value, key) : removeData(key));
+            const categoryData = data[category as keyof SignalDataTypeMap];
+            if (categoryData) {
+              for (const id_key in categoryData) {
+                const value = categoryData[id_key];
+                const key = `${id}:${category}:${id_key}`;
+                tasks.push(value ? writeData(value, key) : removeData(key));
+              }
             }
           }
           await Promise.all(tasks);

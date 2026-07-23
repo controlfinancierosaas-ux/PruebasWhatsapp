@@ -9,6 +9,7 @@ Se ha implementado el proyecto completo siguiendo el stack solicitado:
   - Se instaló `@tailwindcss/postcss` y se actualizó `postcss.config.mjs` para solucionar el error de compilación de Tailwind CSS 4.
   - Se escapó el carácter `>` en `QRScreen.tsx` para cumplir con las reglas de JSX.
   - Se corrigió la ruta de importación de Supabase en `auth-adapter.ts`.
+  - Se añadieron validaciones de nulidad en `auth-adapter.ts` para corregir errores de tipado de TypeScript.
 - **Base de Datos (Supabase):**
   - Definición de esquema para `conversations`, `messages`, `connection_state`, `outbox` y `baileys_auth`.
   - Configuración del cliente `supabase.ts` con soporte para service role.
