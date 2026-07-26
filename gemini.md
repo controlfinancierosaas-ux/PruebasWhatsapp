@@ -23,16 +23,36 @@ Para enviar mensajes desde otro proyecto usando este sistema, sigue estas instru
 Debes conectar el proyecto externo a la misma base de datos de Supabase. Necesitarás:
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY` o `SERVICE_ROLE_KEY`
+#### Paso 2: Envío de Mensajes y Obtención del ID
+Para poder rastrear el mensaje, el proyecto externo debe capturar el `id` generado al momento de la inserción.
 
-#### Paso 2: Envío de Mensajes
-Simplemente inserta un registro en la tabla `outbox`:
+**Opción A: Usando el cliente de Supabase (JavaScript/TypeScript)**
+```javascript
+const { data, error } = await supabase
+  .from('outbox')
+  .insert({ phone: '584121234567', content: 'Hola mundo' })
+  .select('id') // <--- Esto devuelve el ID generado
+  .single();
+
+const messageId = data.id;
+```
+
+**Opción B: Usando SQL Directo**
 ```sql
 INSERT INTO outbox (phone, content) 
-VALUES ('584121234567', 'Hola, este es un mensaje desde el otro proyecto');
+VALUES ('584121234567', 'Hola mundo') 
+RETURNING id; -- <--- Devuelve el ID inmediatamente
 ```
-*Nota: No es necesario proporcionar `conversation_id`, el sistema lo resolverá o creará la conversación automáticamente.*
+
+**Opción C: Generando el ID desde el proyecto externo**
+Si prefieres, puedes generar tu propio UUID en el proyecto externo y enviarlo, así ya lo conoces de antemano:
+```javascript
+const myId = crypto.randomUUID();
+await supabase.from('outbox').insert({ id: myId, phone: '...', content: '...' });
+```
 
 #### Paso 3: Seguimiento del Estado
+...
 El proyecto externo puede consultar el estado del envío usando el ID del registro insertado:
 ```sql
 SELECT status, error_message, sent_at, whatsapp_message_id 
