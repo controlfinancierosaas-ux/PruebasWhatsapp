@@ -20,7 +20,7 @@ export default function SettingsPage() {
     remote_info_link: '',
     additional_info: '',
     custom_prompt_override: '',
-    prohibitions: ''
+    prohibitions: 'No inventar precios ni promociones\nNo prometer plazos exactos\nNo hablar mal de la competencia\nNo salirse del tema del negocio'
   });
 
   const [customTone, setCustomTone] = useState('');
@@ -41,6 +41,10 @@ export default function SettingsPage() {
       const tone = data.tone || '';
       const personality = data.personality || '';
       
+      // Sanitizar el texto de prohibiciones para que los \n se conviertan en saltos de linea reales
+      const rawProhibitions = data.prohibitions || 'No inventar precios ni promociones\nNo prometer plazos exactos\nNo hablar mal de la competencia\nNo salirse del tema del negocio';
+      const sanitizedProhibitions = rawProhibitions.replace(/\\n/g, '\n');
+
       setSettings({
         tone: predefinedTones.includes(tone) ? tone : (tone ? 'otro' : ''),
         vocabulary: data.vocabulary || '',
@@ -49,7 +53,7 @@ export default function SettingsPage() {
         remote_info_link: data.remote_info_link || '',
         additional_info: data.additional_info || '',
         custom_prompt_override: data.custom_prompt_override || '',
-        prohibitions: data.prohibitions || 'No inventar precios ni promociones\nNo prometer plazos exactos\nNo hablar mal de la competencia\nNo salirse del tema del negocio'
+        prohibitions: sanitizedProhibitions
       });
 
       if (tone && !predefinedTones.includes(tone)) {
@@ -143,7 +147,7 @@ export default function SettingsPage() {
   };
 
   const handleReset = async () => {
-    if (!confirm('¿Estás seguro de que deseas REINICIAR el Bot? Esto borrará TODAS las instrucciones, personalidad y el prompt guardado, dejándolo en blanco.')) {
+    if (!confirm('¿Estás seguro de que deseas REINICIAR el Bot? Esto borrará TODAS las instrucciones, personalidad y el prompt guardado.')) {
       return;
     }
 
