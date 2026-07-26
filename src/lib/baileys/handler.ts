@@ -18,10 +18,13 @@ export const handleMessage = async (sock: WASocket, msg: WAMessage) => {
     
     // Intentamos obtener información del contacto desde WhatsApp
     try {
-      const [result] = await sock.onWhatsApp(internalId);
-      if (result && result.jid && result.jid !== remoteJid) {
-        realPhone = result.jid.split('@')[0];
-        console.log(`[Resolution] Successfully mapped ${internalId} to real phone: ${realPhone}`);
+      const results = await sock.onWhatsApp(internalId);
+      if (results && results.length > 0) {
+        const result = results[0];
+        if (result && result.jid && result.jid !== remoteJid) {
+          realPhone = result.jid.split('@')[0];
+          console.log(`[Resolution] Successfully mapped ${internalId} to real phone: ${realPhone}`);
+        }
       }
     } catch (e) {
       console.log(`[Resolution] Failed to resolve LID via onWhatsApp: ${e}`);
