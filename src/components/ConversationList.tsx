@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 interface Conversation {
   id: string;
   phone: string;
+  real_phone?: string;
   name: string;
   mode: string;
   last_message_at: string;
@@ -53,7 +54,12 @@ export default function ConversationList({
                   {conv.mode}
                 </span>
               </div>
-              <p className="text-xs text-gray-500 truncate">+{conv.phone}</p>
+              <div className="flex items-center gap-1 text-xs text-gray-500 overflow-hidden">
+                <p className="truncate">+{conv.real_phone || conv.phone}</p>
+                {conv.real_phone && conv.real_phone !== conv.phone && (
+                  <span className="text-[9px] text-gray-400 font-mono truncate">({conv.phone})</span>
+                )}
+              </div>
             </div>
           </div>
         ))}

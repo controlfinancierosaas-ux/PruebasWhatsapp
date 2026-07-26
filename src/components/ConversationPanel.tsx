@@ -68,7 +68,12 @@ export default function ConversationPanel({ conversation }: { conversation: any 
           </div>
           <div>
             <h3 className="font-bold text-gray-800">{conversation.name}</h3>
-            <p className="text-xs text-gray-500">+{conversation.phone}</p>
+            <div className="flex items-center gap-1 text-xs text-gray-500">
+              <p>+{conversation.real_phone || conversation.phone}</p>
+              {conversation.real_phone && conversation.real_phone !== conversation.phone && (
+                <span className="text-[10px] text-gray-400 font-mono">({conversation.phone})</span>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-4">
