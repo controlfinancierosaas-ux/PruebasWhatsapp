@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import { supabaseAdmin } from './supabase';
-import { SYSTEM_PROMPT } from './system-prompt';
+import { botConfig } from './bot-config';
 
 const openai = new OpenAI({
   baseURL: 'https://openrouter.ai/api/v1',
@@ -22,8 +22,11 @@ export const generateAIResponse = async (conversationId: string, userMessage: st
       .order('created_at', { ascending: false })
       .limit(10);
 
+    // Usar el prompt generado dinámicamente desde la configuración en memoria
+    const dynamicPrompt = botConfig.generateSystemPrompt();
+
     const messages: any[] = [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: dynamicPrompt },
       ...(history?.reverse().map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content })) || []),
       { role: 'user', content: userMessage }
     ];

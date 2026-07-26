@@ -11,10 +11,14 @@ import { useSupabaseAuth } from './auth-adapter';
 import { supabaseAdmin } from '../supabase';
 import { handleMessage } from './handler';
 import QRCode from 'qrcode';
+import { botConfig } from '../bot-config';
 
 const logger = pino({ level: 'info' });
 
 export const initWhatsApp = async () => {
+  // Initialize bot settings in memory and setup realtime sync
+  await botConfig.init();
+
   const { version } = await fetchLatestBaileysVersion();
   const { state, saveCreds } = await useSupabaseAuth('main-session');
 
