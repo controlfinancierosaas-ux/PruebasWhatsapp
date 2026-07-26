@@ -86,8 +86,16 @@ class BotConfigManager {
       return c.custom_prompt_override;
     }
 
-    let prompt = `Eres un asistente de WhatsApp profesional. 
-Tu tono es ${c.tone} y tu personalidad es ${c.personality}.`;
+    // Si no hay tono ni personalidad definida, el bot se considera "en blanco"
+    if (!c.tone && !c.personality && !c.additional_info && !c.remote_info_link) {
+      return '';
+    }
+
+    let prompt = `Eres un asistente de WhatsApp profesional.`;
+    
+    if (c.tone || c.personality) {
+      prompt += ` \nTu tono es ${c.tone || 'neutral'} y tu personalidad es ${c.personality || 'equilibrada'}.`;
+    }
 
     if (c.vocabulary) {
       prompt += `\nUsa este vocabulario y jerga: ${c.vocabulary}.`;

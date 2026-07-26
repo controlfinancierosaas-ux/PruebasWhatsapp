@@ -1,6 +1,6 @@
 # Seguimiento del Proyecto PruebasWhatsapp
 
-## [2026-07-26] Corrección de Bucle de Conexión, Resolución de Contactos y Mejora de Trazabilidad
+## [2026-07-26] Corrección de Bucle de Conexión, Resolución de Contactos y Personalización Avanzada
 
 ### 1. Solución al Bucle de Conexión (UI)
 - **Problema:** El sistema bloqueaba todo acceso al dashboard si no había una conexión activa de WhatsApp.
@@ -12,11 +12,17 @@
 - **Solución:** Se implementó una función de resolución en `handler.ts`. Al recibir un mensaje, el bot intenta mapear el LID al número de teléfono real (`jid`) consultando los metadatos de WhatsApp.
 - **Visualización:** El Dashboard ahora muestra el número real como primario y el ID técnico entre paréntesis para trazabilidad.
 
-### 3. Mejora en la Tabla `outbox` (Trazabilidad)
+### 3. Personalización y Lavado de Cerebro (Reiniciar Bot)
+- **Motor de Configuración:** Implementado un sistema de caché en RAM con **Supabase Realtime**. El bot reacciona a cambios de personalidad al instante sin reiniciar.
+- **Edición de Prompt:** El usuario ahora puede revisar y **editar manualmente el prompt final** antes de guardarlo.
+- **Función de Reset:** Se añadió el botón **"Reiniciar Bot (Limpiar)"**. Esto realiza un "lavado de cerebro" borrando todas las instrucciones.
+- **Comportamiento Neutro:** Si el bot está limpio (sin instrucciones), detecta el estado neutro y **se mantiene en silencio**, no respondiendo a ningún mensaje hasta ser configurado nuevamente.
+
+### 4. Mejora en la Tabla `outbox` (Trazabilidad)
 - **Nuevos Campos:** Se añadieron columnas `status`, `error_message`, `sent_at` y `whatsapp_message_id`.
 - **Lógica del Worker:** El bot actualiza estos campos automáticamente. Si hay un error, el motivo queda registrado para consulta externa.
 
-### 4. Guía de Integración para Proyectos Externos
+### 5. Guía de Integración para Proyectos Externos
 Para enviar mensajes desde otro proyecto y rastrear su estado:
 
 #### Paso 1: Envío y Obtención del ID
@@ -44,8 +50,11 @@ ALTER TABLE outbox ADD COLUMN IF NOT EXISTS error_message text;
 ALTER TABLE outbox ADD COLUMN IF NOT EXISTS sent_at timestamptz;
 ALTER TABLE outbox ADD COLUMN IF NOT EXISTS whatsapp_message_id text;
 
--- Añadir columna para número real en conversaciones
+-- Añadir columnas para personalización y número real
 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS real_phone text;
+ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS custom_prompt_override text;
+ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS remote_info_link text;
+ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS additional_info text;
 
 -- Asegurar que los mensajes antiguos tengan un estado
 UPDATE outbox SET status = 'sent' WHERE sent = true AND status = 'pending';

@@ -82,6 +82,14 @@ export const handleMessage = async (sock: WASocket, msg: WAMessage) => {
 
   // 4. If global AI is enabled AND conversation mode is AI, generate response
   if (isGlobalAIEnabled && conversation.mode === 'AI') {
+    const dynamicPrompt = botConfig.generateSystemPrompt();
+
+    // Si el prompt está vacío, el bot está en modo "lavado de cerebro" (limpio)
+    if (!dynamicPrompt) {
+      console.log(`[AI] Bot is unconfigured/neutral. Skipping response.`);
+      return;
+    }
+
     console.log(`[AI] Generating response for ${internalId}...`);
     const aiResponse = await generateAIResponse(conversation.id, content);
     

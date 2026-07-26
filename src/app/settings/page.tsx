@@ -30,10 +30,10 @@ export default function SettingsPage() {
     const { data } = await supabase.from('bot_settings').select('*').eq('id', 1).single();
     if (data) {
       setSettings({
-        tone: data.tone || 'formal',
+        tone: data.tone || '',
         vocabulary: data.vocabulary || '',
-        personality: data.personality || 'resolutivo',
-        short_responses: data.short_responses ?? true,
+        personality: data.personality || '',
+        short_responses: data.short_responses ?? false,
         remote_info_link: data.remote_info_link || '',
         additional_info: data.additional_info || '',
         custom_prompt_override: data.custom_prompt_override || ''
@@ -43,6 +43,12 @@ export default function SettingsPage() {
   };
 
   const generatePreview = () => {
+    if (!settings.tone && !settings.personality && !settings.additional_info && !settings.custom_prompt_override) {
+      setFinalPrompt('');
+      setShowPreview(true);
+      return;
+    }
+
     let prompt = `Eres un asistente de WhatsApp profesional. \nTu tono es ${settings.tone} y tu personalidad es ${settings.personality}.`;
 
     if (settings.vocabulary) {
@@ -81,8 +87,41 @@ export default function SettingsPage() {
     if (error) {
       setMessage('Error al guardar: ' + error.message);
     } else {
-      setMessage('Configuración y Prompt guardados correctamente.');
+      setMessage('Configuración guardada correctamente.');
       setShowPreview(false);
+      setTimeout(() => setMessage(''), 3000);
+    }
+    setSaving(false);
+  };
+
+  const handleReset = async () => {
+    if (!confirm('¿Estás seguro de que deseas REINICIAR el Bot? Esto borrará TODAS las instrucciones, personalidad y el prompt guardado, dejándolo en blanco (sin hacer nada).')) {
+      return;
+    }
+
+    setSaving(true);
+    const emptySettings = {
+      tone: '',
+      vocabulary: '',
+      personality: '',
+      short_responses: false,
+      remote_info_link: '',
+      additional_info: '',
+      custom_prompt_override: ''
+    };
+
+    const { error } = await supabase
+      .from('bot_settings')
+      .update({
+        ...emptySettings,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', 1);
+
+    if (!error) {
+      setSettings(emptySettings);
+      setFinalPrompt('');
+      setMessage('Bot reiniciado: Instrucciones borradas.');
       setTimeout(() => setMessage(''), 3000);
     }
     setSaving(false);
@@ -98,12 +137,23 @@ export default function SettingsPage() {
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-2xl font-bold text-gray-800">Personalización del Bot</h1>
-            <Link href="/" className="text-emerald-600 font-bold hover:underline flex items-center gap-2">
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Volver al Dashboard
-            </Link>
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={handleReset}
+                className="text-red-500 text-sm font-bold border border-red-200 px-4 py-2 rounded-xl hover:bg-red-50 transition-colors flex items-center gap-2"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Reiniciar Bot (Limpiar)
+              </button>
+              <Link href="/" className="text-emerald-600 font-bold hover:underline flex items-center gap-2">
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Volver
+              </Link>
+            </div>
           </div>
 
           {!showPreview ? (
@@ -116,6 +166,7 @@ export default function SettingsPage() {
                     onChange={(e) => setSettings({...settings, tone: e.target.value})}
                     className="w-full rounded-xl border-gray-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500"
                   >
+                    <option value="">(Sin definir)</option>
                     <option value="formal">🎩 Formal / Profesional</option>
                     <option value="cercano">😊 Cercano / Amigable</option>
                     <option value="divertido">🤪 Divertido / Bromista</option>
@@ -130,6 +181,7 @@ export default function SettingsPage() {
                     onChange={(e) => setSettings({...settings, personality: e.target.value})}
                     className="w-full rounded-xl border-gray-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500"
                   >
+                    <option value="">(Sin definir)</option>
                     <option value="resolutivo">🛠 Resolutivo / Eficaz</option>
                     <option value="paciente">🧘 Paciente / Empático</option>
                     <option value="entusiasta">🚀 Entusiasta / Vendedor</option>
@@ -170,7 +222,6 @@ export default function SettingsPage() {
                   placeholder="https://drive.google.com/..."
                   className="w-full rounded-xl border-gray-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500"
                 />
-                <p className="mt-2 text-[10px] text-emerald-600 font-bold uppercase">El bot leerá esta carpeta para configurar su conocimiento.</p>
               </div>
 
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -198,11 +249,10 @@ export default function SettingsPage() {
                   </svg>
                   Revisión del Prompt Final
                 </h2>
-                <p className="text-sm text-amber-700 mb-4">Este es el texto exacto que se enviará a la IA. Puedes editarlo libremente antes de guardar.</p>
-                
                 <textarea 
                   value={finalPrompt}
                   onChange={(e) => setFinalPrompt(e.target.value)}
+                  placeholder="El prompt está vacío. El Bot no responderá si lo guardas así."
                   className="w-full h-96 rounded-xl border-amber-300 border p-4 font-mono text-sm outline-none focus:ring-2 focus:ring-amber-500 bg-white"
                 />
               </div>
@@ -212,14 +262,14 @@ export default function SettingsPage() {
                   onClick={() => setShowPreview(false)}
                   className="flex-1 bg-gray-200 text-gray-700 font-bold py-4 rounded-2xl hover:bg-gray-300 transition-colors"
                 >
-                  VOLVER A PARAMETROS
+                  VOLVER
                 </button>
                 <button 
                   onClick={handleSave}
                   disabled={saving}
                   className="flex-[2] bg-emerald-600 text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-emerald-700 transition-colors disabled:opacity-50"
                 >
-                  {saving ? 'Guardando...' : 'CONFIRMAR Y GUARDAR CONFIGURACIÓN'}
+                  {saving ? 'Guardando...' : 'CONFIRMAR Y GUARDAR'}
                 </button>
               </div>
             </div>
