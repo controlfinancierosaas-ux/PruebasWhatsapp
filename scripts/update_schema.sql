@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS bot_settings (
   bot_name text,
   company_name text,
   core_goal text,
+  language text DEFAULT 'Español',
   handover_message text DEFAULT 'En un momento te contactará un agente humano para ayudarte mejor.',
   updated_at timestamptz DEFAULT now(),
   CONSTRAINT one_row CHECK (id = 1)

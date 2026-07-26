@@ -7,6 +7,7 @@ export interface BotConfig {
   tone: string;
   vocabulary: string;
   personality: string;
+  language: string;
   short_responses: boolean;
   remote_info_link: string;
   additional_info: string;
@@ -23,6 +24,7 @@ class BotConfigManager {
     tone: 'formal',
     vocabulary: '',
     personality: 'resolutivo',
+    language: 'Español',
     short_responses: true,
     remote_info_link: '',
     additional_info: '',
@@ -80,6 +82,7 @@ class BotConfigManager {
       tone: data.tone || 'formal',
       vocabulary: data.vocabulary || '',
       personality: data.personality || 'resolutivo',
+      language: data.language || 'Español',
       short_responses: !!data.short_responses,
       remote_info_link: data.remote_info_link || '',
       additional_info: data.additional_info || '',
@@ -112,7 +115,7 @@ class BotConfigManager {
     prompt += `- Rol: Asistente virtual especializado\n`;
     prompt += `- Tono de voz: ${c.tone || 'Neutral'}\n`;
     prompt += `- Personalidad: ${c.personality || 'Equilibrada'}\n`;
-    prompt += `- Idioma: Español principal\n\n`;
+    prompt += `- Idioma: ${c.language || 'Español'}\n\n`;
 
     if (c.core_goal) {
       prompt += `# 2. OBJETIVO PRINCIPAL\n- ${c.core_goal}\n\n`;
@@ -123,25 +126,27 @@ class BotConfigManager {
       prompt += `${c.additional_info}\n`;
     }
     if (c.vocabulary) {
-      prompt += `- Vocabulario y jerga a usar: ${c.vocabulary}\n`;
+      prompt += `- Diccionario Específico (Palabras y modismos): ${c.vocabulary}\n`;
     }
     if (c.remote_info_link) {
-      prompt += `- DOCUMENTACIÓN EXTERNA COMPLEMENTARIA: Tu conocimiento se extiende con la información contenida en esta carpeta: ${c.remote_info_link}. Actúa como si hubieras analizado todos sus documentos.\n`;
+      prompt += `- DOCUMENTACIÓN EXTERNA COMPLEMENTARIA: Tu conocimiento se extiende con la información contenida en esta carpeta: ${c.remote_info_link}. Actúa como si hubieras leído y analizado todos sus documentos.\n`;
     }
     prompt += `\n`;
 
-    prompt += `# 4. REGLAS DE FORMATO PARA WHATSAPP\n`;
+    prompt += `# 4. REGLAS DE FORMATO Y ESTILO PARA WHATSAPP\n`;
+    prompt += `- EVITA LA "CHARLATANERÍA": La gente busca respuestas inmediatas. Da la solución o respuesta clave en la primera frase.\n`;
+    prompt += `- MENÚS IMPLÍCITOS: Evita preguntas abiertas como "¿En qué te puedo ayudar?". Prueba con opciones directas como "¿Deseas consultar precios, soporte o información general?".\n`;
+    prompt += `- FORMATO SOPORTADO: Usa únicamente *negrita*, _cursiva_ o ~tachado~. No uses otro tipo de markdown.\n`;
     if (c.short_responses) {
-      prompt += `- Extensión: Mensajes CORTOS y directos. Máximo 2 a 3 párrafos cortos. Evita bloques grandes.\n`;
+      prompt += `- EXTENSIÓN: Mensajes CORTOS y directos. Máximo 2 a 3 párrafos muy breves. Evita bloques grandes.\n`;
     }
-    prompt += `- Estilo: Usa viñetas (bullets) para listas y negritas (*) para resaltar datos clave.\n`;
-    prompt += `- Emojis: Usa emojis de forma moderada para dar calidez (máximo 1-2 por mensaje).\n`;
-    prompt += `- Interacción: Cierra siempre con una pregunta clara o llamada a la acción (CTA) para mantener la conversación fluida.\n\n`;
+    prompt += `- EMOJIS: Úsalos con moderación para dar calidez (máximo 1-2 por mensaje).\n`;
+    prompt += `- INTERACCIÓN: Cierra siempre con una pregunta clara o llamada a la acción (CTA) para mantener la fluida la conversación.\n\n`;
 
     if (c.prohibitions) {
       prompt += `# 5. LÍMITES Y LO QUE NO DEBE HACER\n${c.prohibitions}\n`;
       prompt += `- NUNCA inventes información que no esté en tu base de conocimiento.\n`;
-      prompt += `- Si no sabes la respuesta, indica amablemente que no dispones de esa información y ofrece ayuda humana.\n\n`;
+      prompt += `- Si no sabes la respuesta, indica amablemente que no dispones de esa información en este momento y ofrece ayuda humana.\n\n`;
     }
 
     prompt += `# 6. FLUJO DE ESCALACIÓN A HUMANO\n`;

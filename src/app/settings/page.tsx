@@ -19,6 +19,7 @@ export default function SettingsPage() {
     tone: '',
     vocabulary: '',
     personality: '',
+    language: 'Español',
     short_responses: true,
     remote_info_link: '',
     additional_info: '',
@@ -55,6 +56,7 @@ export default function SettingsPage() {
         tone: predefinedTones.includes(tone) ? tone : (tone ? 'otro' : ''),
         vocabulary: data.vocabulary || '',
         personality: predefinedPersonalities.includes(personality) ? personality : (personality ? 'otro' : ''),
+        language: data.language || 'Español',
         short_responses: data.short_responses ?? true,
         remote_info_link: data.remote_info_link || '',
         additional_info: data.additional_info || '',
@@ -95,7 +97,7 @@ export default function SettingsPage() {
     prompt += `- Rol: Asistente virtual especializado\n`;
     prompt += `- Tono de voz: ${activeTone || 'Neutral'}\n`;
     prompt += `- Personalidad: ${activePersonality || 'Equilibrada'}\n`;
-    prompt += `- Idioma: Español principal\n\n`;
+    prompt += `- Idioma: ${settings.language || 'Español'}\n\n`;
 
     if (settings.core_goal) {
       prompt += `# 2. OBJETIVO PRINCIPAL\n- ${settings.core_goal}\n\n`;
@@ -106,25 +108,27 @@ export default function SettingsPage() {
       prompt += `${settings.additional_info}\n`;
     }
     if (settings.vocabulary) {
-      prompt += `- Vocabulario y jerga a usar: ${settings.vocabulary}\n`;
+      prompt += `- Diccionario Específico (Palabras y modismos): ${settings.vocabulary}\n`;
     }
     if (settings.remote_info_link) {
       prompt += `- DOCUMENTACIÓN EXTERNA COMPLEMENTARIA: Tu conocimiento se extiende con la información contenida en esta carpeta: ${settings.remote_info_link}. Actúa como si hubieras leído y analizado todos sus documentos.\n`;
     }
     prompt += `\n`;
 
-    prompt += `# 4. REGLAS DE FORMATO PARA WHATSAPP\n`;
+    prompt += `# 4. REGLAS DE FORMATO Y ESTILO PARA WHATSAPP\n`;
+    prompt += `- EVITA LA "CHARLATANERÍA": La gente busca respuestas inmediatas. Da la solución o respuesta clave en la primera frase.\n`;
+    prompt += `- MENÚS IMPLÍCITOS: Evita preguntas abiertas como "¿En qué te puedo ayudar?". Prueba con opciones directas como "¿Deseas consultar precios, soporte o información general?".\n`;
+    prompt += `- FORMATO SOPORTADO: Usa únicamente *negrita*, _cursiva_ o ~tachado~. No uses otro tipo de markdown.\n`;
     if (settings.short_responses) {
-      prompt += `- Extensión: Mensajes CORTOS y directos. Máximo 2 a 3 párrafos cortos. Evita bloques grandes.\n`;
+      prompt += `- EXTENSIÓN: Mensajes CORTOS y directos. Máximo 2 a 3 párrafos muy breves. Evita bloques grandes.\n`;
     }
-    prompt += `- Estilo: Usa viñetas (bullets) para listas y negritas (*) para resaltar datos clave.\n`;
-    prompt += `- Emojis: Usa emojis de forma moderada para dar calidez (máximo 1-2 por mensaje).\n`;
-    prompt += `- Interacción: Cierra siempre con una pregunta clara o llamada a la acción (CTA) para mantener la conversación fluida.\n\n`;
+    prompt += `- EMOJIS: Úsalos con moderación para dar calidez (máximo 1-2 por mensaje).\n`;
+    prompt += `- INTERACCIÓN: Cierra siempre con una pregunta clara o llamada a la acción (CTA) para mantener la fluida la conversación.\n\n`;
 
     if (settings.prohibitions) {
       prompt += `# 5. LÍMITES Y LO QUE NO DEBE HACER\n${settings.prohibitions}\n`;
       prompt += `- NUNCA inventes información que no esté en tu base de conocimiento.\n`;
-      prompt += `- Si no sabes la respuesta, indica amablemente que no dispones de esa información y ofrece ayuda humana.\n\n`;
+      prompt += `- Si no sabes la respuesta, indica amablemente que no dispones de esa información en este momento y ofrece ayuda humana.\n\n`;
     }
 
     prompt += `# 6. FLUJO DE ESCALACIÓN A HUMANO\n`;
@@ -179,6 +183,7 @@ export default function SettingsPage() {
       tone: '',
       vocabulary: '',
       personality: '',
+      language: 'Español',
       short_responses: false,
       remote_info_link: '',
       additional_info: '',
@@ -239,7 +244,7 @@ export default function SettingsPage() {
                   <span className="h-4 w-1 bg-emerald-500 rounded-full"></span>
                   1. ROL E IDENTIDAD
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                   <div>
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Nombre del Bot</label>
                     <input 
@@ -257,6 +262,16 @@ export default function SettingsPage() {
                       value={settings.company_name}
                       onChange={(e) => setSettings({...settings, company_name: e.target.value})}
                       placeholder="Ej: Inmobiliaria XYZ..."
+                      className="w-full rounded-xl border-gray-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Idioma Principal</label>
+                    <input 
+                      type="text"
+                      value={settings.language}
+                      onChange={(e) => setSettings({...settings, language: e.target.value})}
+                      placeholder="Ej: Español, Inglés..."
                       className="w-full rounded-xl border-gray-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                   </div>
@@ -343,14 +358,15 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Vocabulario y Jerga</label>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Diccionario Específico (Modismos, Palabras Clave o Jerga Técnica)</label>
                     <input 
                       type="text"
                       value={settings.vocabulary}
                       onChange={(e) => setSettings({...settings, vocabulary: e.target.value})}
-                      placeholder="Ej: Parce, SaaS, ROI..."
+                      placeholder="Ej: 'parce' para cercanía, 'SaaS' para tecnología, 'Bs.' para moneda..."
                       className="w-full rounded-xl border-gray-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500"
                     />
+                    <p className="mt-1 text-[10px] text-gray-400 italic">Escribe aquí las palabras exactas, modismos o términos técnicos que el Bot DEBE usar en su habla.</p>
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Link a Carpeta de Documentación (Cloud)</label>
@@ -396,7 +412,7 @@ export default function SettingsPage() {
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 uppercase tracking-wider">Estilo de WhatsApp Real</label>
-                  <p className="text-xs text-gray-400 italic">Forzar mensajes cortos y fluidos.</p>
+                  <p className="text-xs text-gray-400 italic">Forzar mensajes cortos, respuestas inmediatas y formato WhatsApp.</p>
                 </div>
                 <button 
                   type="button"
