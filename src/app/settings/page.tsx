@@ -13,6 +13,9 @@ export default function SettingsPage() {
   const [finalPrompt, setFinalPrompt] = useState('');
   
   const [settings, setSettings] = useState({
+    bot_name: '',
+    company_name: '',
+    core_goal: '',
     tone: '',
     vocabulary: '',
     personality: '',
@@ -20,7 +23,8 @@ export default function SettingsPage() {
     remote_info_link: '',
     additional_info: '',
     custom_prompt_override: '',
-    prohibitions: 'No inventar precios ni promociones\nNo prometer plazos exactos\nNo hablar mal de la competencia\nNo salirse del tema del negocio'
+    prohibitions: 'No inventar precios ni promociones\nNo prometer plazos exactos\nNo hablar mal de la competencia\nNo salirse del tema del negocio',
+    handover_message: 'En un momento te contactará un agente humano para ayudarte mejor.'
   });
 
   const [customTone, setCustomTone] = useState('');
@@ -41,19 +45,22 @@ export default function SettingsPage() {
       const tone = data.tone || '';
       const personality = data.personality || '';
       
-      // Sanitizar el texto de prohibiciones para que los \n se conviertan en saltos de linea reales
       const rawProhibitions = data.prohibitions || 'No inventar precios ni promociones\nNo prometer plazos exactos\nNo hablar mal de la competencia\nNo salirse del tema del negocio';
       const sanitizedProhibitions = rawProhibitions.replace(/\\n/g, '\n');
 
       setSettings({
+        bot_name: data.bot_name || '',
+        company_name: data.company_name || '',
+        core_goal: data.core_goal || '',
         tone: predefinedTones.includes(tone) ? tone : (tone ? 'otro' : ''),
         vocabulary: data.vocabulary || '',
         personality: predefinedPersonalities.includes(personality) ? personality : (personality ? 'otro' : ''),
-        short_responses: data.short_responses ?? false,
+        short_responses: data.short_responses ?? true,
         remote_info_link: data.remote_info_link || '',
         additional_info: data.additional_info || '',
         custom_prompt_override: data.custom_prompt_override || '',
-        prohibitions: sanitizedProhibitions
+        prohibitions: sanitizedProhibitions,
+        handover_message: data.handover_message || 'En un momento te contactará un agente humano para ayudarte mejor.'
       });
 
       if (tone && !predefinedTones.includes(tone)) {
@@ -82,37 +89,50 @@ export default function SettingsPage() {
     const activeTone = settings.tone === 'otro' ? customTone : settings.tone;
     const activePersonality = settings.personality === 'otro' ? customPersonality : settings.personality;
 
-    if (!activeTone && !activePersonality && !settings.additional_info && !settings.custom_prompt_override && !settings.prohibitions) {
-      setFinalPrompt('');
-      setShowPreview(true);
-      return;
+    let prompt = `# 1. ROL E IDENTIDAD\n`;
+    prompt += `- Nombre del bot: ${settings.bot_name || '[Nombre del Asistente]'}\n`;
+    prompt += `- Empresa / Proyecto: ${settings.company_name || '[Nombre del Negocio]'}\n`;
+    prompt += `- Rol: Asistente virtual especializado\n`;
+    prompt += `- Tono de voz: ${activeTone || 'Neutral'}\n`;
+    prompt += `- Personalidad: ${activePersonality || 'Equilibrada'}\n`;
+    prompt += `- Idioma: Español principal\n\n`;
+
+    if (settings.core_goal) {
+      prompt += `# 2. OBJETIVO PRINCIPAL\n- ${settings.core_goal}\n\n`;
     }
 
-    let prompt = `Eres un asistente de WhatsApp profesional.`;
-    
-    if (activeTone || activePersonality) {
-      prompt += ` \nTu tono es ${activeTone || 'neutral'} y tu personalidad es ${activePersonality || 'equilibrada'}.`;
-    }
-
-    if (settings.vocabulary) {
-      prompt += `\nUsa este vocabulario y jerga: ${settings.vocabulary}.`;
-    }
-
+    prompt += `# 3. CONTEXTO Y CONOCIMIENTO BASE\n`;
     if (settings.additional_info) {
-      prompt += `\nContexto adicional importante: ${settings.additional_info}.`;
+      prompt += `${settings.additional_info}\n`;
     }
-
+    if (settings.vocabulary) {
+      prompt += `- Vocabulario y jerga a usar: ${settings.vocabulary}\n`;
+    }
     if (settings.remote_info_link) {
-      prompt += `\nDOCUMENTACIÓN EXTERNA: Tu conocimiento base se complementa con la información contenida en esta carpeta: ${settings.remote_info_link}. Actúa como si hubieras leído y analizado todos los documentos, precios, catálogos y manuales allí presentes.`;
+      prompt += `- DOCUMENTACIÓN EXTERNA COMPLEMENTARIA: Tu conocimiento se extiende con la información contenida en esta carpeta: ${settings.remote_info_link}. Actúa como si hubieras leído y analizado todos sus documentos.\n`;
     }
+    prompt += `\n`;
+
+    prompt += `# 4. REGLAS DE FORMATO PARA WHATSAPP\n`;
+    if (settings.short_responses) {
+      prompt += `- Extensión: Mensajes CORTOS y directos. Máximo 2 a 3 párrafos cortos. Evita bloques grandes.\n`;
+    }
+    prompt += `- Estilo: Usa viñetas (bullets) para listas y negritas (*) para resaltar datos clave.\n`;
+    prompt += `- Emojis: Usa emojis de forma moderada para dar calidez (máximo 1-2 por mensaje).\n`;
+    prompt += `- Interacción: Cierra siempre con una pregunta clara o llamada a la acción (CTA) para mantener la conversación fluida.\n\n`;
 
     if (settings.prohibitions) {
-      prompt += `\nLÍMITES Y REGLAS (NO CRUZAR): \n${settings.prohibitions}`;
+      prompt += `# 5. LÍMITES Y LO QUE NO DEBE HACER\n${settings.prohibitions}\n`;
+      prompt += `- NUNCA inventes información que no esté en tu base de conocimiento.\n`;
+      prompt += `- Si no sabes la respuesta, indica amablemente que no dispones de esa información y ofrece ayuda humana.\n\n`;
     }
 
-    if (settings.short_responses) {
-      prompt += `\nIMPORTANTE: \nEscribe mensajes CORTOS y directos, al estilo de WhatsApp. Evita párrafos largos.`;
-    }
+    prompt += `# 6. FLUJO DE ESCALACIÓN A HUMANO\n`;
+    prompt += `- Transfiere a un agente humano en los siguientes casos:\n`;
+    prompt += `  1. Cuando el usuario lo pida explícitamente.\n`;
+    prompt += `  2. Si hay una queja o reclamo grave.\n`;
+    prompt += `  3. Si tras 2 intentos no logras resolver la solicitud.\n`;
+    prompt += `- Mensaje de transferencia: "${settings.handover_message}"\n`;
 
     setFinalPrompt(settings.custom_prompt_override || prompt);
     setShowPreview(true);
@@ -147,12 +167,15 @@ export default function SettingsPage() {
   };
 
   const handleReset = async () => {
-    if (!confirm('¿Estás seguro de que deseas REINICIAR el Bot? Esto borrará TODAS las instrucciones, personalidad y el prompt guardado.')) {
+    if (!confirm('¿Estás seguro de que deseas REINICIAR el Bot? Esto borrará TODAS las instrucciones.')) {
       return;
     }
 
     setSaving(true);
     const emptySettings = {
+      bot_name: '',
+      company_name: '',
+      core_goal: '',
       tone: '',
       vocabulary: '',
       personality: '',
@@ -160,7 +183,8 @@ export default function SettingsPage() {
       remote_info_link: '',
       additional_info: '',
       custom_prompt_override: '',
-      prohibitions: ''
+      prohibitions: '',
+      handover_message: 'En un momento te contactará un agente humano para ayudarte mejor.'
     };
 
     const { error } = await supabase
@@ -178,7 +202,7 @@ export default function SettingsPage() {
       setShowCustomTone(false);
       setShowCustomPersonality(false);
       setFinalPrompt('');
-      setMessage('Bot reiniciado: Instrucciones borradas.');
+      setMessage('Bot reiniciado.');
       setTimeout(() => setMessage(''), 3000);
     }
     setSaving(false);
@@ -193,21 +217,15 @@ export default function SettingsPage() {
       <main className="flex-1 overflow-y-auto p-8">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-8">
-            <h1 className="text-2xl font-bold text-gray-800 tracking-tight">Personalización del Bot</h1>
+            <h1 className="text-2xl font-bold text-gray-800 tracking-tight uppercase">Configuración Maestra del Bot</h1>
             <div className="flex items-center gap-4">
               <button 
                 onClick={handleReset}
                 className="text-red-500 text-sm font-bold border border-red-200 px-4 py-2 rounded-xl hover:bg-red-50 transition-colors flex items-center gap-2"
               >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
                 Limpiar Bot
               </button>
               <Link href="/" className="bg-white border border-gray-200 text-gray-600 font-bold px-4 py-2 rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-2">
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
                 Dashboard
               </Link>
             </div>
@@ -215,94 +233,170 @@ export default function SettingsPage() {
 
           {!showPreview ? (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Tono */}
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                  <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Tono de Voz</label>
-                  <select 
-                    value={settings.tone}
-                    onChange={(e) => handleToneChange(e.target.value)}
-                    className="w-full rounded-xl border-gray-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500 mb-3"
-                  >
-                    <option value="">(Sin definir)</option>
-                    <option value="formal">🎩 Formal / Profesional</option>
-                    <option value="cercano">😊 Cercano / Amigable</option>
-                    <option value="divertido">🤪 Divertido / Bromista</option>
-                    <option value="directo">⚡ Directo / Conciso</option>
-                    <option value="otro">⚙️ Otros...</option>
-                  </select>
-                  {showCustomTone && (
+              {/* Sección 1: Identidad */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <h2 className="text-xs font-black text-emerald-600 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                  <span className="h-4 w-1 bg-emerald-500 rounded-full"></span>
+                  1. ROL E IDENTIDAD
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Nombre del Bot</label>
                     <input 
                       type="text"
-                      value={customTone}
-                      onChange={(e) => setCustomTone(e.target.value)}
-                      placeholder="Escribe el tono personalizado..."
-                      className="w-full rounded-xl border-emerald-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500 bg-emerald-50/30"
+                      value={settings.bot_name}
+                      onChange={(e) => setSettings({...settings, bot_name: e.target.value})}
+                      placeholder="Ej: Sofía, Asistente de Ventas..."
+                      className="w-full rounded-xl border-gray-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500"
                     />
-                  )}
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Nombre de la Empresa</label>
+                    <input 
+                      type="text"
+                      value={settings.company_name}
+                      onChange={(e) => setSettings({...settings, company_name: e.target.value})}
+                      placeholder="Ej: Inmobiliaria XYZ..."
+                      className="w-full rounded-xl border-gray-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
                 </div>
-
-                {/* Personalidad */}
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                  <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Personalidad</label>
-                  <select 
-                    value={settings.personality}
-                    onChange={(e) => handlePersonalityChange(e.target.value)}
-                    className="w-full rounded-xl border-gray-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500 mb-3"
-                  >
-                    <option value="">(Sin definir)</option>
-                    <option value="resolutivo">🛠 Resolutivo / Eficaz</option>
-                    <option value="paciente">🧘 Paciente / Empático</option>
-                    <option value="entusiasta">🚀 Entusiasta / Vendedor</option>
-                    <option value="analitico">🧐 Analítico / Detallista</option>
-                    <option value="otro">⚙️ Otros...</option>
-                  </select>
-                  {showCustomPersonality && (
-                    <input 
-                      type="text"
-                      value={customPersonality}
-                      onChange={(e) => setCustomPersonality(e.target.value)}
-                      placeholder="Escribe la personalidad personalizada..."
-                      className="w-full rounded-xl border-emerald-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500 bg-emerald-50/30"
-                    />
-                  )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Tono de Voz</label>
+                    <select 
+                      value={settings.tone}
+                      onChange={(e) => handleToneChange(e.target.value)}
+                      className="w-full rounded-xl border-gray-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500 mb-3"
+                    >
+                      <option value="">(Sin definir)</option>
+                      <option value="formal">🎩 Formal / Profesional</option>
+                      <option value="cercano">😊 Cercano / Amigable</option>
+                      <option value="divertido">🤪 Divertido / Bromista</option>
+                      <option value="directo">⚡ Directo / Conciso</option>
+                      <option value="otro">⚙️ Otros...</option>
+                    </select>
+                    {showCustomTone && (
+                      <input 
+                        type="text"
+                        value={customTone}
+                        onChange={(e) => setCustomTone(e.target.value)}
+                        placeholder="Escribe el tono..."
+                        className="w-full rounded-xl border-emerald-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500 bg-emerald-50/30"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Personalidad</label>
+                    <select 
+                      value={settings.personality}
+                      onChange={(e) => handlePersonalityChange(e.target.value)}
+                      className="w-full rounded-xl border-gray-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500 mb-3"
+                    >
+                      <option value="">(Sin definir)</option>
+                      <option value="resolutivo">🛠 Resolutivo / Eficaz</option>
+                      <option value="paciente">🧘 Paciente / Empático</option>
+                      <option value="entusiasta">🚀 Entusiasta / Vendedor</option>
+                      <option value="analitico">🧐 Analítico / Detallista</option>
+                      <option value="otro">⚙️ Otros...</option>
+                    </select>
+                    {showCustomPersonality && (
+                      <input 
+                        type="text"
+                        value={customPersonality}
+                        onChange={(e) => setCustomPersonality(e.target.value)}
+                        placeholder="Escribe la personalidad..."
+                        className="w-full rounded-xl border-emerald-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500 bg-emerald-50/30"
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
 
+              {/* Sección 2: Objetivo */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Vocabulario y Jerga</label>
+                <h2 className="text-xs font-black text-emerald-600 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                  <span className="h-4 w-1 bg-emerald-500 rounded-full"></span>
+                  2. OBJETIVO PRINCIPAL
+                </h2>
                 <textarea 
-                  value={settings.vocabulary}
-                  onChange={(e) => setSettings({...settings, vocabulary: e.target.value})}
+                  value={settings.core_goal}
+                  onChange={(e) => setSettings({...settings, core_goal: e.target.value})}
+                  placeholder="Ej: Tu objetivo es resolver dudas frecuentes y guiar al usuario..."
                   className="w-full h-24 rounded-xl border-gray-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
-              {/* Prohibiciones */}
+              {/* Sección 3: Conocimiento */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <h2 className="text-xs font-black text-emerald-600 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                  <span className="h-4 w-1 bg-emerald-500 rounded-full"></span>
+                  3. CONTEXTO Y CONOCIMIENTO BASE
+                </h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Información Manual (Precios, FAQs, Horarios...)</label>
+                    <textarea 
+                      value={settings.additional_info}
+                      onChange={(e) => setSettings({...settings, additional_info: e.target.value})}
+                      className="w-full h-32 rounded-xl border-gray-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Vocabulario y Jerga</label>
+                    <input 
+                      type="text"
+                      value={settings.vocabulary}
+                      onChange={(e) => setSettings({...settings, vocabulary: e.target.value})}
+                      placeholder="Ej: Parce, SaaS, ROI..."
+                      className="w-full rounded-xl border-gray-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Link a Carpeta de Documentación (Cloud)</label>
+                    <input 
+                      type="url"
+                      value={settings.remote_info_link}
+                      onChange={(e) => setSettings({...settings, remote_info_link: e.target.value})}
+                      placeholder="https://drive.google.com/..."
+                      className="w-full rounded-xl border-gray-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Sección 5: Límites (Movida arriba por importancia) */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-red-100">
-                <label className="block text-sm font-bold text-red-700 mb-2 uppercase tracking-wider flex items-center gap-2">
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  Límites y Reglas (Cosas Prohibidas)
-                </label>
+                <h2 className="text-xs font-black text-red-600 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                  <span className="h-4 w-1 bg-red-500 rounded-full"></span>
+                  5. LÍMITES Y REGLAS (COSA PROHIBIDAS)
+                </h2>
                 <textarea 
                   value={settings.prohibitions}
                   onChange={(e) => setSettings({...settings, prohibitions: e.target.value})}
-                  placeholder="Ej: No inventar precios, No hablar de política..."
-                  className="w-full h-32 rounded-xl border-red-200 border p-3 outline-none focus:ring-2 focus:ring-red-500 bg-red-50/30 font-medium text-gray-800"
+                  className="w-full h-32 rounded-xl border-red-200 border p-3 outline-none focus:ring-2 focus:ring-red-500 bg-red-50/30 font-medium"
+                />
+              </div>
+
+              {/* Sección 6: Transferencia */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <h2 className="text-xs font-black text-emerald-600 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                  <span className="h-4 w-1 bg-emerald-500 rounded-full"></span>
+                  6. FLUJO DE ESCALACIÓN A HUMANO
+                </h2>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Mensaje antes de transferir</label>
+                <input 
+                  type="text"
+                  value={settings.handover_message}
+                  onChange={(e) => setSettings({...settings, handover_message: e.target.value})}
+                  className="w-full rounded-xl border-gray-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    IMPORTANTE: Estilo de WhatsApp Real
-                  </label>
-                  <p className="text-xs text-gray-400 italic font-bold">Mensajes CORTOS y directos, al estilo de WhatsApp. Evita párrafos largos.</p>
+                  <label className="block text-sm font-bold text-gray-700 uppercase tracking-wider">Estilo de WhatsApp Real</label>
+                  <p className="text-xs text-gray-400 italic">Forzar mensajes cortos y fluidos.</p>
                 </div>
                 <button 
                   type="button"
@@ -313,63 +407,39 @@ export default function SettingsPage() {
                 </button>
               </div>
 
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Carpeta de Información Base (Cloud Link)</label>
-                <input 
-                  type="url"
-                  value={settings.remote_info_link}
-                  onChange={(e) => setSettings({...settings, remote_info_link: e.target.value})}
-                  placeholder="https://drive.google.com/..."
-                  className="w-full rounded-xl border-gray-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Datos Adicionales Manuales</label>
-                <textarea 
-                  value={settings.additional_info}
-                  onChange={(e) => setSettings({...settings, additional_info: e.target.value})}
-                  className="w-full h-32 rounded-xl border-gray-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
               <button 
                 onClick={generatePreview}
-                className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-emerald-700 transition-colors"
+                className="w-full bg-emerald-600 text-white font-black py-5 rounded-2xl shadow-xl hover:bg-emerald-700 transition-all uppercase tracking-widest"
               >
-                GENERAR Y REVISAR PROMPT FINAL
+                GENERAR Y REVISAR PROMPT MAESTRO
               </button>
             </div>
           ) : (
             <div className="space-y-6">
-              <div className="bg-amber-50 border border-amber-200 p-6 rounded-2xl">
-                <h2 className="text-amber-800 font-bold mb-2 flex items-center gap-2 uppercase tracking-wider text-sm">
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  Revisión del Prompt Final
+              <div className="bg-amber-50 border border-amber-200 p-8 rounded-[2rem] shadow-inner">
+                <h2 className="text-amber-800 font-black mb-4 flex items-center gap-2 uppercase tracking-widest text-sm">
+                  REVISIÓN DEL PROMPT FINAL (MAESTRO)
                 </h2>
                 <textarea 
                   value={finalPrompt}
                   onChange={(e) => setFinalPrompt(e.target.value)}
-                  placeholder="El prompt está vacío."
-                  className="w-full h-96 rounded-xl border-amber-300 border p-4 font-mono text-sm outline-none focus:ring-2 focus:ring-amber-500 bg-white leading-relaxed"
+                  className="w-full h-[600px] rounded-2xl border-amber-300 border p-6 font-mono text-xs outline-none focus:ring-2 focus:ring-amber-500 bg-white leading-relaxed text-gray-700 shadow-sm"
                 />
               </div>
 
               <div className="flex gap-4">
                 <button 
                   onClick={() => setShowPreview(false)}
-                  className="flex-1 bg-gray-200 text-gray-700 font-bold py-4 rounded-2xl hover:bg-gray-300 transition-colors"
+                  className="flex-1 bg-white border border-gray-200 text-gray-500 font-black py-4 rounded-2xl hover:bg-gray-50 transition-colors uppercase tracking-widest text-xs"
                 >
-                  VOLVER
+                  VOLVER A EDITAR
                 </button>
                 <button 
                   onClick={handleSave}
                   disabled={saving}
-                  className="flex-[2] bg-emerald-600 text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                  className="flex-[2] bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 uppercase tracking-widest text-xs"
                 >
-                  {saving ? 'Guardando...' : 'CONFIRMAR Y GUARDAR'}
+                  {saving ? 'GUARDANDO...' : 'CONFIRMAR Y ACTIVAR BOT'}
                 </button>
               </div>
             </div>

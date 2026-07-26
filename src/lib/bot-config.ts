@@ -1,6 +1,9 @@
 import { supabaseAdmin } from './supabase';
 
 export interface BotConfig {
+  bot_name: string;
+  company_name: string;
+  core_goal: string;
   tone: string;
   vocabulary: string;
   personality: string;
@@ -9,10 +12,14 @@ export interface BotConfig {
   additional_info: string;
   custom_prompt_override: string;
   prohibitions: string;
+  handover_message: string;
 }
 
 class BotConfigManager {
   private config: BotConfig = {
+    bot_name: '',
+    company_name: '',
+    core_goal: '',
     tone: 'formal',
     vocabulary: '',
     personality: 'resolutivo',
@@ -20,7 +27,8 @@ class BotConfigManager {
     remote_info_link: '',
     additional_info: '',
     custom_prompt_override: '',
-    prohibitions: ''
+    prohibitions: '',
+    handover_message: 'En un momento te contactará un agente humano para ayudarte mejor.'
   };
 
   private static instance: BotConfigManager;
@@ -66,6 +74,9 @@ class BotConfigManager {
 
   private updateInternalConfig(data: any) {
     this.config = {
+      bot_name: data.bot_name || '',
+      company_name: data.company_name || '',
+      core_goal: data.core_goal || '',
       tone: data.tone || 'formal',
       vocabulary: data.vocabulary || '',
       personality: data.personality || 'resolutivo',
@@ -73,7 +84,8 @@ class BotConfigManager {
       remote_info_link: data.remote_info_link || '',
       additional_info: data.additional_info || '',
       custom_prompt_override: data.custom_prompt_override || '',
-      prohibitions: data.prohibitions || ''
+      prohibitions: data.prohibitions || '',
+      handover_message: data.handover_message || 'En un momento te contactará un agente humano para ayudarte mejor.'
     };
   }
 
@@ -90,35 +102,54 @@ class BotConfigManager {
     }
 
     // Si no hay tono ni personalidad definida, el bot se considera "en blanco"
-    if (!c.tone && !c.personality && !c.additional_info && !c.remote_info_link) {
+    if (!c.tone && !c.personality && !c.additional_info && !c.remote_info_link && !c.bot_name && !c.company_name) {
       return '';
     }
 
-    let prompt = `Eres un asistente de WhatsApp profesional.`;
-    
-    if (c.tone || c.personality) {
-      prompt += ` \nTu tono es ${c.tone || 'neutral'} y tu personalidad es ${c.personality || 'equilibrada'}.`;
+    let prompt = `# 1. ROL E IDENTIDAD\n`;
+    prompt += `- Nombre del bot: ${c.bot_name || 'Asistente de WhatsApp'}\n`;
+    prompt += `- Empresa / Proyecto: ${c.company_name || 'El Negocio'}\n`;
+    prompt += `- Rol: Asistente virtual especializado\n`;
+    prompt += `- Tono de voz: ${c.tone || 'Neutral'}\n`;
+    prompt += `- Personalidad: ${c.personality || 'Equilibrada'}\n`;
+    prompt += `- Idioma: Español principal\n\n`;
+
+    if (c.core_goal) {
+      prompt += `# 2. OBJETIVO PRINCIPAL\n- ${c.core_goal}\n\n`;
     }
 
-    if (c.vocabulary) {
-      prompt += `\nUsa este vocabulario y jerga: ${c.vocabulary}.`;
-    }
-
+    prompt += `# 3. CONTEXTO Y CONOCIMIENTO BASE\n`;
     if (c.additional_info) {
-      prompt += `\nContexto adicional importante: ${c.additional_info}.`;
+      prompt += `${c.additional_info}\n`;
     }
-
+    if (c.vocabulary) {
+      prompt += `- Vocabulario y jerga a usar: ${c.vocabulary}\n`;
+    }
     if (c.remote_info_link) {
-      prompt += `\nDOCUMENTACIÓN EXTERNA: Tu conocimiento base se complementa con la información contenida en esta carpeta: ${c.remote_info_link}. Actúa como si hubieras leído y analizado todos los documentos, precios, catálogos y manuales allí presentes.`;
+      prompt += `- DOCUMENTACIÓN EXTERNA COMPLEMENTARIA: Tu conocimiento se extiende con la información contenida en esta carpeta: ${c.remote_info_link}. Actúa como si hubieras analizado todos sus documentos.\n`;
     }
+    prompt += `\n`;
+
+    prompt += `# 4. REGLAS DE FORMATO PARA WHATSAPP\n`;
+    if (c.short_responses) {
+      prompt += `- Extensión: Mensajes CORTOS y directos. Máximo 2 a 3 párrafos cortos. Evita bloques grandes.\n`;
+    }
+    prompt += `- Estilo: Usa viñetas (bullets) para listas y negritas (*) para resaltar datos clave.\n`;
+    prompt += `- Emojis: Usa emojis de forma moderada para dar calidez (máximo 1-2 por mensaje).\n`;
+    prompt += `- Interacción: Cierra siempre con una pregunta clara o llamada a la acción (CTA) para mantener la conversación fluida.\n\n`;
 
     if (c.prohibitions) {
-      prompt += `\nLÍMITES Y REGLAS (NO CRUZAR): \n${c.prohibitions}`;
+      prompt += `# 5. LÍMITES Y LO QUE NO DEBE HACER\n${c.prohibitions}\n`;
+      prompt += `- NUNCA inventes información que no esté en tu base de conocimiento.\n`;
+      prompt += `- Si no sabes la respuesta, indica amablemente que no dispones de esa información y ofrece ayuda humana.\n\n`;
     }
 
-    if (c.short_responses) {
-      prompt += `\nIMPORTANTE: \nEscribe mensajes CORTOS y directos, al estilo de WhatsApp. Evita párrafos largos.`;
-    }
+    prompt += `# 6. FLUJO DE ESCALACIÓN A HUMANO\n`;
+    prompt += `- Transfiere a un agente humano en los siguientes casos:\n`;
+    prompt += `  1. Cuando el usuario lo pida explícitamente.\n`;
+    prompt += `  2. Si hay una queja o reclamo grave.\n`;
+    prompt += `  3. Si tras 2 intentos no logras resolver la solicitud.\n`;
+    prompt += `- Mensaje de transferencia: "${c.handover_message}"\n`;
 
     return prompt;
   }

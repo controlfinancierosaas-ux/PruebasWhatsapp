@@ -9,6 +9,10 @@ CREATE TABLE IF NOT EXISTS bot_settings (
   additional_info text,
   custom_prompt_override text,
   prohibitions text DEFAULT 'No inventar precios ni promociones\nNo prometer plazos exactos\nNo hablar mal de la competencia\nNo salirse del tema del negocio',
+  bot_name text,
+  company_name text,
+  core_goal text,
+  handover_message text DEFAULT 'En un momento te contactará un agente humano para ayudarte mejor.',
   updated_at timestamptz DEFAULT now(),
   CONSTRAINT one_row CHECK (id = 1)
 );
