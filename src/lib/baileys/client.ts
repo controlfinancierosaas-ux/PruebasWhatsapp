@@ -93,10 +93,14 @@ export const initWhatsApp = async () => {
 
   // Outbox Polling
   setInterval(async () => {
+    // Only poll if socket is connected
+    if (!sock.user) return;
+
     const { data: pending } = await supabaseAdmin
       .from('outbox')
       .select('*')
-      .eq('sent', false);
+      .eq('sent', false)
+      .eq('status', 'pending');
 
     if (pending && pending.length > 0) {
       for (const item of pending) {
@@ -126,12 +130,15 @@ export const initWhatsApp = async () => {
           }
 
           // 2. Send message
-          await sock.sendMessage(`${item.phone}@s.whatsapp.net`, { text: item.content });
+          const sentMsg = await sock.sendMessage(`${item.phone}@s.whatsapp.net`, { text: item.content });
           
           // 3. Mark as sent and link conversation_id
           await supabaseAdmin.from('outbox').update({ 
-            sent: true, 
-            conversation_id: conversationId 
+            sent: true,
+            status: 'sent',
+            conversation_id: conversationId,
+            sent_at: new Date().toISOString(),
+            whatsapp_message_id: sentMsg?.key.id
           }).eq('id', item.id);
           
           // 4. Record in messages history
@@ -146,8 +153,12 @@ export const initWhatsApp = async () => {
               last_message_at: new Date().toISOString() 
             }).eq('id', conversationId);
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('[Outbox] Error sending message:', error);
+          await supabaseAdmin.from('outbox').update({ 
+            status: 'error',
+            error_message: error.message || String(error)
+          }).eq('id', item.id);
         }
       }
     }

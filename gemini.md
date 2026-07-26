@@ -1,7 +1,62 @@
 # Seguimiento del Proyecto PruebasWhatsapp
 
-## [2026-07-23] Implementación de Switch Global de IA y Mejoras de Configuración
+## [2026-07-26] Corrección de Bucle de Conexión y Mejora de Trazabilidad Externo
 
+### 1. Solución al Bucle de Conexión (UI)
+- **Problema:** El sistema bloqueaba todo acceso al dashboard si no había una conexión activa de WhatsApp, mostrando una pantalla de "Esperando conexión" infinita.
+- **Corrección:** Se refactorizó `ConnectionGate` para que sea un Proveedor de Contexto (`useConnection`) en lugar de un componente de bloqueo. Ahora, el dashboard siempre es accesible.
+- **Nueva Lógica:** Si no hay una conversación seleccionada y el estado es `disconnected` o `qr`, el sistema muestra el código QR dentro del panel central. Si está conectado, muestra un mensaje de bienvenida.
+- **Indicador de Estado:** Se añadió un punto de color en la cabecera (`DashboardHeader`) que indica en tiempo real el estado: Verde (Conectado), Ámbar (Esperando QR), Rojo (Desconectado).
+
+### 2. Mejora en la Tabla `outbox` (Trazabilidad)
+- **Nuevos Campos:** Se añadieron columnas para seguimiento detallado del envío:
+  - `status`: Estado del envío (`pending`, `sent`, `error`).
+  - `error_message`: Motivo del fallo si el envío falla.
+  - `sent_at`: Fecha y hora exacta del envío exitoso.
+  - `whatsapp_message_id`: El ID único generado por WhatsApp para ese mensaje.
+- **Lógica del Worker:** El bot ahora actualiza estos campos automáticamente al procesar el `outbox`. Si el bot está desconectado, no procesa la cola hasta que se restablezca la conexión, evitando fallos silenciosos.
+
+### 3. Guía de Integración para Proyectos Externos
+Para enviar mensajes desde otro proyecto usando este sistema, sigue estas instrucciones:
+
+#### Paso 1: Configuración en el Proyecto Externo
+Debes conectar el proyecto externo a la misma base de datos de Supabase. Necesitarás:
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY` o `SERVICE_ROLE_KEY`
+
+#### Paso 2: Envío de Mensajes
+Simplemente inserta un registro en la tabla `outbox`:
+```sql
+INSERT INTO outbox (phone, content) 
+VALUES ('584121234567', 'Hola, este es un mensaje desde el otro proyecto');
+```
+*Nota: No es necesario proporcionar `conversation_id`, el sistema lo resolverá o creará la conversación automáticamente.*
+
+#### Paso 3: Seguimiento del Estado
+El proyecto externo puede consultar el estado del envío usando el ID del registro insertado:
+```sql
+SELECT status, error_message, sent_at, whatsapp_message_id 
+FROM outbox 
+WHERE id = 'ID_DEL_REGISTRO';
+```
+- Si `status` es `sent`, el mensaje llegó a los servidores de WhatsApp.
+- Si `status` es `error`, consulta `error_message` para saber qué pasó (ej: "session closed").
+
+### SQL Requerido para Actualización:
+```sql
+-- Ejecutar en el Editor SQL de Supabase
+ALTER TABLE outbox ALTER COLUMN conversation_id DROP NOT NULL;
+ALTER TABLE outbox ADD COLUMN IF NOT EXISTS status text DEFAULT 'pending';
+ALTER TABLE outbox ADD COLUMN IF NOT EXISTS error_message text;
+ALTER TABLE outbox ADD COLUMN IF NOT EXISTS sent_at timestamptz;
+ALTER TABLE outbox ADD COLUMN IF NOT EXISTS whatsapp_message_id text;
+
+-- Asegurar que los mensajes antiguos tengan un estado
+UPDATE outbox SET status = 'sent' WHERE sent = true AND status = 'pending';
+```
+
+## [2026-07-23] Implementación de Switch Global de IA y Mejoras de Configuración
+...
 Se han realizado las siguientes correcciones y mejoras solicitadas:
 
 ### 1. Switch Global de IA (Master Switch)

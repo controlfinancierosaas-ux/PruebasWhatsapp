@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useConnection } from './ConnectionGate';
 
 export default function DashboardHeader() {
   const [globalAI, setGlobalAI] = useState(true);
+  const { status } = useConnection();
 
   useEffect(() => {
     const fetchGlobalAI = async () => {
@@ -70,6 +72,19 @@ export default function DashboardHeader() {
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold">W</div>
           <h1 className="text-xl font-bold text-gray-800">WhatsApp AI Bot</h1>
+        </div>
+
+        <div className="h-8 w-px bg-gray-200"></div>
+
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-50 border border-gray-100">
+          <div className={`h-2 w-2 rounded-full ${
+            status === 'connected' ? 'bg-emerald-500 animate-pulse' : 
+            status === 'qr' ? 'bg-amber-500' : 'bg-red-500'
+          }`}></div>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-600">
+            {status === 'connected' ? 'Conectado' : 
+             status === 'qr' ? 'Esperando QR' : 'Desconectado'}
+          </span>
         </div>
 
         <div className="h-8 w-px bg-gray-200"></div>
