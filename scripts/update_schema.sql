@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS bot_settings (
   short_responses boolean DEFAULT true,
   remote_info_link text,
   additional_info text,
+  custom_prompt_override text,
   updated_at timestamptz DEFAULT now(),
   CONSTRAINT one_row CHECK (id = 1)
 );

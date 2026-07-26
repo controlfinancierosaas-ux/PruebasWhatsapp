@@ -7,6 +7,7 @@ export interface BotConfig {
   short_responses: boolean;
   remote_info_link: string;
   additional_info: string;
+  custom_prompt_override: string;
 }
 
 class BotConfigManager {
@@ -16,7 +17,8 @@ class BotConfigManager {
     personality: 'resolutivo',
     short_responses: true,
     remote_info_link: '',
-    additional_info: ''
+    additional_info: '',
+    custom_prompt_override: ''
   };
 
   private static instance: BotConfigManager;
@@ -67,7 +69,8 @@ class BotConfigManager {
       personality: data.personality || 'resolutivo',
       short_responses: !!data.short_responses,
       remote_info_link: data.remote_info_link || '',
-      additional_info: data.additional_info || ''
+      additional_info: data.additional_info || '',
+      custom_prompt_override: data.custom_prompt_override || ''
     };
   }
 
@@ -77,6 +80,12 @@ class BotConfigManager {
 
   public generateSystemPrompt(): string {
     const c = this.config;
+
+    // Priorizar el prompt editado manualmente por el usuario
+    if (c.custom_prompt_override) {
+      return c.custom_prompt_override;
+    }
+
     let prompt = `Eres un asistente de WhatsApp profesional. 
 Tu tono es ${c.tone} y tu personalidad es ${c.personality}.`;
 
@@ -89,7 +98,7 @@ Tu tono es ${c.tone} y tu personalidad es ${c.personality}.`;
     }
 
     if (c.remote_info_link) {
-      prompt += `\nPuedes encontrar más información detallada sobre precios, catálogos o calendarios en este enlace: ${c.remote_info_link}. (Si el usuario pregunta por algo que no sabes, invítalo a revisar ese link).`;
+      prompt += `\nDOCUMENTACIÓN EXTERNA: Tu conocimiento base se complementa con la información contenida en esta carpeta: ${c.remote_info_link}. Actúa como si hubieras leído y analizado todos los documentos, precios, catálogos y manuales allí presentes.`;
     }
 
     if (c.short_responses) {
