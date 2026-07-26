@@ -82,7 +82,7 @@ export const handleMessage = async (sock: WASocket, msg: WAMessage) => {
 
   // 4. If global AI is enabled AND conversation mode is AI, generate response
   if (isGlobalAIEnabled && conversation.mode === 'AI') {
-    console.log(`[AI] Generating response for ${phone}...`);
+    console.log(`[AI] Generating response for ${internalId}...`);
     const aiResponse = await generateAIResponse(conversation.id, content);
     
     if (aiResponse) {
@@ -96,7 +96,7 @@ export const handleMessage = async (sock: WASocket, msg: WAMessage) => {
         content: aiResponse
       });
     } else {
-      console.error(`[AI] Failed to generate response for ${phone}`);
+      console.error(`[AI] Failed to generate response for ${internalId}`);
     }
   } else {
     console.log(`[AI] Skipped (Global: ${isGlobalAIEnabled}, Chat: ${conversation.mode})`);
