@@ -8,6 +8,7 @@ export interface BotConfig {
   remote_info_link: string;
   additional_info: string;
   custom_prompt_override: string;
+  prohibitions: string;
 }
 
 class BotConfigManager {
@@ -18,7 +19,8 @@ class BotConfigManager {
     short_responses: true,
     remote_info_link: '',
     additional_info: '',
-    custom_prompt_override: ''
+    custom_prompt_override: '',
+    prohibitions: ''
   };
 
   private static instance: BotConfigManager;
@@ -70,7 +72,8 @@ class BotConfigManager {
       short_responses: !!data.short_responses,
       remote_info_link: data.remote_info_link || '',
       additional_info: data.additional_info || '',
-      custom_prompt_override: data.custom_prompt_override || ''
+      custom_prompt_override: data.custom_prompt_override || '',
+      prohibitions: data.prohibitions || ''
     };
   }
 
@@ -109,8 +112,12 @@ class BotConfigManager {
       prompt += `\nDOCUMENTACIÓN EXTERNA: Tu conocimiento base se complementa con la información contenida en esta carpeta: ${c.remote_info_link}. Actúa como si hubieras leído y analizado todos los documentos, precios, catálogos y manuales allí presentes.`;
     }
 
+    if (c.prohibitions) {
+      prompt += `\nLÍMITES Y REGLAS (NO CRUZAR): \n${c.prohibitions}`;
+    }
+
     if (c.short_responses) {
-      prompt += `\nIMPORTANTE: Escribe mensajes CORTOS y directos, al estilo de WhatsApp. Evita párrafos largos.`;
+      prompt += `\nIMPORTANTE: \nEscribe mensajes CORTOS y directos, al estilo de WhatsApp. Evita párrafos largos.`;
     }
 
     return prompt;

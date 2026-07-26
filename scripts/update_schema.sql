@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS bot_settings (
   remote_info_link text,
   additional_info text,
   custom_prompt_override text,
+  prohibitions text DEFAULT 'No inventar precios ni promociones\nNo prometer plazos exactos\nNo hablar mal de la competencia\nNo salirse del tema del negocio',
   updated_at timestamptz DEFAULT now(),
   CONSTRAINT one_row CHECK (id = 1)
 );

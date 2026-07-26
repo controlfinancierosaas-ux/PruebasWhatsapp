@@ -19,7 +19,8 @@ export default function SettingsPage() {
     short_responses: true,
     remote_info_link: '',
     additional_info: '',
-    custom_prompt_override: ''
+    custom_prompt_override: '',
+    prohibitions: 'No inventar precios ni promociones\nNo prometer plazos exactos\nNo hablar mal de la competencia\nNo salirse del tema del negocio'
   });
 
   useEffect(() => {
@@ -36,20 +37,25 @@ export default function SettingsPage() {
         short_responses: data.short_responses ?? false,
         remote_info_link: data.remote_info_link || '',
         additional_info: data.additional_info || '',
-        custom_prompt_override: data.custom_prompt_override || ''
+        custom_prompt_override: data.custom_prompt_override || '',
+        prohibitions: data.prohibitions || 'No inventar precios ni promociones\nNo prometer plazos exactos\nNo hablar mal de la competencia\nNo salirse del tema del negocio'
       });
     }
     setLoading(false);
   };
 
   const generatePreview = () => {
-    if (!settings.tone && !settings.personality && !settings.additional_info && !settings.custom_prompt_override) {
+    if (!settings.tone && !settings.personality && !settings.additional_info && !settings.custom_prompt_override && !settings.prohibitions) {
       setFinalPrompt('');
       setShowPreview(true);
       return;
     }
 
-    let prompt = `Eres un asistente de WhatsApp profesional. \nTu tono es ${settings.tone} y tu personalidad es ${settings.personality}.`;
+    let prompt = `Eres un asistente de WhatsApp profesional.`;
+    
+    if (settings.tone || settings.personality) {
+      prompt += ` \nTu tono es ${settings.tone || 'neutral'} y tu personalidad es ${settings.personality || 'equilibrada'}.`;
+    }
 
     if (settings.vocabulary) {
       prompt += `\nUsa este vocabulario y jerga: ${settings.vocabulary}.`;
@@ -63,8 +69,12 @@ export default function SettingsPage() {
       prompt += `\nDOCUMENTACIÓN EXTERNA: Tu conocimiento base se complementa con la información contenida en esta carpeta: ${settings.remote_info_link}. Actúa como si hubieras leído y analizado todos los documentos, precios, catálogos y manuales allí presentes.`;
     }
 
+    if (settings.prohibitions) {
+      prompt += `\nLÍMITES Y REGLAS (NO CRUZAR): \n${settings.prohibitions}`;
+    }
+
     if (settings.short_responses) {
-      prompt += `\nIMPORTANTE: Escribe mensajes CORTOS y directos, al estilo de WhatsApp. Evita párrafos largos.`;
+      prompt += `\nIMPORTANTE: \nEscribe mensajes CORTOS y directos, al estilo de WhatsApp. Evita párrafos largos.`;
     }
 
     setFinalPrompt(settings.custom_prompt_override || prompt);
@@ -107,7 +117,8 @@ export default function SettingsPage() {
       short_responses: false,
       remote_info_link: '',
       additional_info: '',
-      custom_prompt_override: ''
+      custom_prompt_override: '',
+      prohibitions: ''
     };
 
     const { error } = await supabase
@@ -199,10 +210,32 @@ export default function SettingsPage() {
                 />
               </div>
 
+              {/* Prohibiciones */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-red-100">
+                <label className="block text-sm font-bold text-red-700 mb-2 uppercase tracking-wider flex items-center gap-2">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  Límites y Reglas (Cosas Prohibidas)
+                </label>
+                <textarea 
+                  value={settings.prohibitions}
+                  onChange={(e) => setSettings({...settings, prohibitions: e.target.value})}
+                  placeholder="Ej: No inventar precios, No hablar de política..."
+                  className="w-full h-32 rounded-xl border-red-200 border p-3 outline-none focus:ring-2 focus:ring-red-500 bg-red-50/30 font-medium text-gray-800"
+                />
+                <p className="mt-2 text-xs text-red-400 italic">Define qué es lo que el Bot NUNCA debe decir o hacer.</p>
+              </div>
+
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 uppercase tracking-wider">Estilo de WhatsApp Real</label>
-                  <p className="text-xs text-gray-400 italic">Mensajes cortos y directos.</p>
+                  <label className="block text-sm font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    IMPORTANTE: Estilo de WhatsApp Real
+                  </label>
+                  <p className="text-xs text-gray-400 italic font-bold">Mensajes CORTOS y directos, al estilo de WhatsApp. Evita párrafos largos.</p>
                 </div>
                 <button 
                   type="button"
