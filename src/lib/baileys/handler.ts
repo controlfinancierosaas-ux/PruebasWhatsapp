@@ -1,6 +1,7 @@
 import { WASocket, WAMessage } from '@whiskeysockets/baileys';
 import { supabaseAdmin } from '../supabase';
 import { generateAIResponse } from '../openrouter';
+import { botConfig } from '../bot-config';
 
 export const handleMessage = async (sock: WASocket, msg: WAMessage) => {
   const remoteJid = msg.key.remoteJid;
