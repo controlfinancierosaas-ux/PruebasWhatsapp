@@ -350,12 +350,14 @@ export default function SettingsPage() {
                 </h2>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Información Manual (Precios, FAQs, Horarios...)</label>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Información de la Empresa, Productos y FAQs</label>
                     <textarea 
                       value={settings.additional_info}
                       onChange={(e) => setSettings({...settings, additional_info: e.target.value})}
-                      className="w-full h-32 rounded-xl border-gray-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder={`- Información de la empresa/servicio: [Breve resumen]\n- Productos / Servicios clave: [Listado o descripción]\n- Preguntas Frecuentes (FAQs) rápidas:\n  * Horarios / Ubicación: [...]\n  * Precios / Formas de pago: [...]\n  * Tiempos de respuesta o entrega: [...]`}
+                      className="w-full h-48 rounded-xl border-gray-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500"
                     />
+                    <p className="mt-1 text-[10px] text-gray-400 italic">Proporciona la información clave que el bot debe conocer para responder correctamente.</p>
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Diccionario Específico (Modismos, Palabras Clave o Jerga Técnica)</label>
@@ -366,7 +368,6 @@ export default function SettingsPage() {
                       placeholder="Ej: 'parce' para cercanía, 'SaaS' para tecnología, 'Bs.' para moneda..."
                       className="w-full rounded-xl border-gray-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500"
                     />
-                    <p className="mt-1 text-[10px] text-gray-400 italic">Escribe aquí las palabras exactas, modismos o términos técnicos que el Bot DEBE usar en su habla.</p>
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Link a Carpeta de Documentación (Cloud)</label>
