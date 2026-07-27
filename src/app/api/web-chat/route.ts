@@ -76,8 +76,10 @@ export async function POST(req: Request) {
     // 5. Generate AI Response
     const dynamicPrompt = botConfig.generateSystemPrompt();
     
-    // Si el bot está en modo "lavado de cerebro" o sin configuración
-    if (!dynamicPrompt || dynamicPrompt.trim() === "" || conversation.mode === 'CAPTURING_DATA') {
+    // Check if we need to capture data OR if already in capturing mode
+    const isCapturing = !dynamicPrompt || dynamicPrompt.trim() === "" || conversation.mode === 'CAPTURING_DATA';
+
+    if (isCapturing) {
       
       // RE-FETCHING conversation to ensure we have the absolute latest mode/metadata 
       let { data: conv } = await supabaseAdmin
@@ -119,14 +121,7 @@ export async function POST(req: Request) {
 
       console.log(`[DataCapture DEBUG] Next Step: ${nextStep}, Metadata to Save:`, JSON.stringify(metadata));
       
-      const { error: updateError } = await supabaseAdmin
-        .from('conversations')
-        .update({ mode: 'CAPTURING_DATA', metadata: { ...metadata, step: nextStep } })
-        .eq('id', conv.id);
-
-      if (updateError) {
-        console.error('[DataCapture DEBUG] Error updating Supabase:', updateError);
-      }
+      await supabaseAdmin.from('conversations').update({ mode: 'CAPTURING_DATA', metadata: { ...metadata, step: nextStep } }).eq('id', conv.id);
       
       return NextResponse.json({ response, role: 'assistant', mode: 'AI' });
     }
@@ -151,6 +146,7 @@ export async function POST(req: Request) {
       }
     } catch (aiError) {
       console.error('[WebChat API] AI Generation Error:', aiError);
+      
       // Fallback a captura de datos si falla la AI
       await supabaseAdmin.from('conversations').update({ mode: 'CAPTURING_DATA', metadata: { step: 'NAME' } }).eq('id', conversation.id);
       const errorFallback = "Lo siento, tengo dificultades técnicas. Para que un asesor te contacte, por favor indícame tu *Nombre completo*.";
