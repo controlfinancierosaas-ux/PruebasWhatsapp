@@ -1,5 +1,22 @@
 # Seguimiento del Proyecto PruebasWhatsapp
 
+## [2026-07-27] Fix: Eliminar llamada a la IA durante CAPTURING_DATA (bucle residual)
+
+**Problema detectado en revisión:** El flujo de captura paso a paso (`CAPTURING_DATA`) ya persistía el estado correctamente en BD, pero `handleMessage` seguía invocando `detectHandoffIntent` (llamada a la IA) en **cada mensaje del usuario, incluso durante la captura**, antes de verificar el modo `CAPTURING_DATA`. Esto contradice el requisito de no intentar comunicarse con la IA mientras se capturan NAME → EMAIL → PHONE, y añadía latencia/llamadas innecesarias a OpenRouter cuando precisamente la IA es la que está fallando o sin configurar.
+
+**Corrección aplicada en `src/lib/baileys/handler.ts`:**
+- Se reordenó la lógica: la verificación de `conversation.mode === 'CAPTURING_DATA'` ahora ocurre **antes** de `detectHandoffIntent`, de modo que ningún mensaje durante la captura dispara una llamada a la IA.
+- El resto del flujo (`NAME → EMAIL → PHONE → notificación dual al admin → HUMAN`) ya estaba correctamente implementado y no fue modificado.
+
+**Estado del resto de correcciones (ya presentes en el repo, verificadas en esta revisión):**
+- Captura stateful consultando la BD en cada paso (`capture_step`, `capture_name`, `capture_email`, `capture_phone`).
+- Notificación dual (WhatsApp + Email) al admin vía `notifyAdminUnconfiguredLead` con nombre, email, teléfono e historial del chat.
+- Configuración extendida en `system-settings`: selector de modelo IA (`ai_model`), presets de temperatura (`ai_temperature`), `ai_max_tokens`, `unconfigured_greeting`, `greeting_enabled`, botón "Enviar Email de Prueba" (`/api/test-email`).
+
+No se requieren cambios de esquema SQL adicionales para esta corrección (las columnas ya existen según el SQL documentado más abajo).
+
+---
+
 ## [2026-07-27] Fix Loop - Captura Paso a Paso + Configuración Extendida de IA
 
 ### 1. Corrección del Bucle de Fallas del Bot (CRÍTICO)

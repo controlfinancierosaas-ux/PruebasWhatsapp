@@ -76,18 +76,20 @@ export const handleMessage = async (sock: WASocket, msg: WAMessage) => {
     return;
   }
 
-  // 6. Intent Detection (Talk to human / Frustration)
+  // 6. Si estamos en modo CAPTURING_DATA, manejar la captura paso a paso
+  // IMPORTANTE: se verifica ANTES de cualquier intento de comunicación con la IA
+  // (ni siquiera detección de intención) para no interferir con la captura NAME -> EMAIL -> PHONE.
+  if (conversation.mode === 'CAPTURING_DATA') {
+    await handleCapturingData(sock, conversation, remoteJid, content);
+    return;
+  }
+
+  // 7. Intent Detection (Talk to human / Frustration)
   const shouldTransfer = await detectHandoffIntent(content);
 
   if (shouldTransfer) {
     console.log(`[Handoff] Intent detected for ${internalId}. Transferring...`);
     await performHandoff(sock, conversation, remoteJid);
-    return;
-  }
-
-  // 7. Si estamos en modo CAPTURING_DATA, manejar la captura paso a paso
-  if (conversation.mode === 'CAPTURING_DATA') {
-    await handleCapturingData(sock, conversation, remoteJid, content);
     return;
   }
 
