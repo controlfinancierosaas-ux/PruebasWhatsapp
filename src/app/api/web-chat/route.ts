@@ -120,19 +120,23 @@ export async function POST(req: Request) {
     // --- ONLY NOW execute AI-dependent logic ---
     // 5. Intent Detection (Talk to human / Frustration)
     // Only run if we are NOT capturing data and the prompt is configured
-    const shouldTransfer = await detectHandoffIntent(message);
-    if (shouldTransfer) {
-      const config = botConfig.getConfig();
-      const handoverMsg = config.handover_message || 'Entendido. He silenciado mis respuestas automáticas. En un momento te atenderá un compañero (asesor).';
-      
-      await supabaseAdmin.from('conversations').update({ mode: 'HUMAN' }).eq('id', conversation.id);
-      await notifyAdminHandoff(null, conversation.id, internalId);
+    try {
+        const shouldTransfer = await detectHandoffIntent(message);
+        if (shouldTransfer) {
+          const config = botConfig.getConfig();
+          const handoverMsg = config.handover_message || 'Entendido. He silenciado mis respuestas automáticas. En un momento te atenderá un compañero (asesor).';
+          
+          await supabaseAdmin.from('conversations').update({ mode: 'HUMAN' }).eq('id', conversation.id);
+          await notifyAdminHandoff(null, conversation.id, internalId);
 
-      return NextResponse.json({ 
-        response: handoverMsg,
-        role: 'assistant',
-        mode: 'HUMAN'
-      });
+          return NextResponse.json({ 
+            response: handoverMsg,
+            role: 'assistant',
+            mode: 'HUMAN'
+          });
+        }
+    } catch (e) {
+        console.error('[WebChat API] Intent Detection Error (ignoring):', e);
     }
 
     try {
