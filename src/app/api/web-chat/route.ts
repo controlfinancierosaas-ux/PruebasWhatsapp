@@ -57,26 +57,8 @@ export async function POST(req: Request) {
       });
     }
 
-    // 4. Intent Detection (Talk to human / Frustration)
-    const shouldTransfer = await detectHandoffIntent(message);
-    if (shouldTransfer) {
-      const config = botConfig.getConfig();
-      const handoverMsg = config.handover_message || 'Entendido. He silenciado mis respuestas automáticas. En un momento te atenderá un compañero (asesor).';
-      
-      await supabaseAdmin.from('conversations').update({ mode: 'HUMAN' }).eq('id', conversation.id);
-      await notifyAdminHandoff(null, conversation.id, internalId);
-
-      return NextResponse.json({ 
-        response: handoverMsg,
-        role: 'assistant',
-        mode: 'HUMAN'
-      });
-    }
-
-    // 5. Generate AI Response
+    // 4. Determine if we should handle as AI or Capturing Data
     const dynamicPrompt = botConfig.generateSystemPrompt();
-    
-    // Check if we need to capture data OR if already in capturing mode
     const isCapturing = !dynamicPrompt || dynamicPrompt.trim() === "" || conversation.mode === 'CAPTURING_DATA';
 
     if (isCapturing) {
@@ -115,6 +97,10 @@ export async function POST(req: Request) {
           
           response = '¡Muchas gracias! He registrado tus datos correctamente. Nuestro equipo humano ha sido notificado y se pondrá en contacto contigo a la brevedad posible.';
           return NextResponse.json({ response, role: 'assistant', mode: 'HUMAN' });
+        } else {
+            // Step unknown, reset to Name
+            response = '¡Hola! Parece que tenemos problemas técnicos. Para poder ayudarte, indícame tu *Nombre completo*.';
+            nextStep = 'NAME';
         }
       } else {
         // FIRST TIME, just asking for Name
@@ -129,6 +115,24 @@ export async function POST(req: Request) {
       await supabaseAdmin.from('conversations').update({ metadata: { ...metadata, step: nextStep } }).eq('id', conv.id);
       
       return NextResponse.json({ response, role: 'assistant', mode: 'AI' });
+    }
+
+    // --- ONLY NOW execute AI-dependent logic ---
+    // 5. Intent Detection (Talk to human / Frustration)
+    // Only run if we are NOT capturing data and the prompt is configured
+    const shouldTransfer = await detectHandoffIntent(message);
+    if (shouldTransfer) {
+      const config = botConfig.getConfig();
+      const handoverMsg = config.handover_message || 'Entendido. He silenciado mis respuestas automáticas. En un momento te atenderá un compañero (asesor).';
+      
+      await supabaseAdmin.from('conversations').update({ mode: 'HUMAN' }).eq('id', conversation.id);
+      await notifyAdminHandoff(null, conversation.id, internalId);
+
+      return NextResponse.json({ 
+        response: handoverMsg,
+        role: 'assistant',
+        mode: 'HUMAN'
+      });
     }
 
     try {
