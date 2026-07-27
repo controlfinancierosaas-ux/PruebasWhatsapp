@@ -6,8 +6,7 @@ import { botConfig } from '@/lib/bot-config';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
-...
-
+  try {
     const { message, sessionId, name } = await req.json();
 
     if (!message || !sessionId) {
