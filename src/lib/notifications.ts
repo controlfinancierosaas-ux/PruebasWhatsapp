@@ -3,7 +3,7 @@ import { supabaseAdmin } from './supabase';
 import { generateConversationSummary } from './openrouter';
 import { sendEmail } from './email';
 
-export async function notifyAdminHandoff(sock: WASocket, conversationId: string, userPhone: string) {
+export async function notifyAdminHandoff(sock: WASocket | null, conversationId: string, userPhone: string) {
   try {
     console.log(`[Notification] Starting handoff notification for ${userPhone}...`);
 
@@ -16,7 +16,7 @@ export async function notifyAdminHandoff(sock: WASocket, conversationId: string,
 
     const adminEmail = settings?.admin_email;
     const adminPhone = settings?.admin_phone;
-    
+
     // 2. Generate Summary
     const summary = await generateConversationSummary(conversationId);
     const dashboardLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/`;
@@ -24,12 +24,26 @@ export async function notifyAdminHandoff(sock: WASocket, conversationId: string,
     // 3. Send WhatsApp Alert to Admin (if configured)
     if (adminPhone) {
       const waMsg = `⚠️ *Alerta: Atención Humana Solicitada*\n\nEl cliente *+${userPhone}* solicita atención humana o el sistema detectó frustración.\n\n*Ver aquí:* ${dashboardLink}\n\n_Resumen IA:_\n${summary}`;
-      const jid = adminPhone.includes('@s.whatsapp.net') ? adminPhone : `${adminPhone}@s.whatsapp.net`;
-      await sock.sendMessage(jid, { text: waMsg });
-      console.log(`[Notification] WhatsApp sent to admin: ${adminPhone}`);
+
+      if (sock) {
+        // If we have a direct socket (from WhatsApp worker), send it directly
+        const jid = adminPhone.includes('@s.whatsapp.net') ? adminPhone : `${adminPhone}@s.whatsapp.net`;
+        await sock.sendMessage(jid, { text: waMsg });
+        console.log(`[Notification] WhatsApp sent directly to admin: ${adminPhone}`);
+      } else {
+        // If no socket (from API route), use outbox
+        await supabaseAdmin.from('outbox').insert({
+          phone: adminPhone.replace('@s.whatsapp.net', ''),
+          content: waMsg,
+          sent: false,
+          status: 'pending'
+        });
+        console.log(`[Notification] WhatsApp alert queued in outbox for admin: ${adminPhone}`);
+      }
     } else {
       console.warn('[Notification] No admin phone configured for WhatsApp alert.');
     }
+...
 
     // 4. Send Email Alert (if configured)
     if (adminEmail) {

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { generateAIResponse } from '@/lib/openrouter';
+import { generateAIResponse, detectHandoffIntent } from '@/lib/openrouter';
 import { botConfig } from '@/lib/bot-config';
+import { notifyAdminHandoff } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,14 +48,45 @@ export async function POST(req: Request) {
 
     await supabaseAdmin.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', conversation.id);
 
-    // 3. Generate AI Response
+    // 3. IF in HUMAN mode, stop here
+    if (conversation.mode === 'HUMAN') {
+      return NextResponse.json({ 
+        response: null,
+        role: 'assistant',
+        mode: 'HUMAN'
+      });
+    }
+
+    // 4. Intent Detection (Talk to human / Frustration)
+    const shouldTransfer = await detectHandoffIntent(message);
+    if (shouldTransfer) {
+      const config = botConfig.getConfig();
+      const handoverMsg = config.handover_message || 'Entendido. He silenciado mis respuestas automáticas. En un momento te atenderá un compañero (asesor).';
+      
+      await supabaseAdmin.from('conversations').update({ mode: 'HUMAN' }).eq('id', conversation.id);
+      await notifyAdminHandoff(null, conversation.id, internalId);
+
+      return NextResponse.json({ 
+        response: handoverMsg,
+        role: 'assistant',
+        mode: 'HUMAN'
+      });
+    }
+
+    // 5. Generate AI Response
     const dynamicPrompt = botConfig.generateSystemPrompt();
     
     // Si el bot está en modo "lavado de cerebro" o sin configuración
     if (!dynamicPrompt || dynamicPrompt.trim() === "") {
+      const fallbackMsg = "¡Hola! Mi sistema aún no ha sido configurado completamente. Para que un asesor humano pueda ayudarte mejor, por favor indícame tu *Nombre completo*, *Email* y *Teléfono*. En breve te contactaremos.";
+      
+      await supabaseAdmin.from('conversations').update({ mode: 'HUMAN' }).eq('id', conversation.id);
+      await notifyAdminHandoff(null, conversation.id, internalId);
+
       return NextResponse.json({ 
-        response: "¡Hola! En este momento nuestro asistente virtual está en mantenimiento para servirte mejor. Por favor, déjanos tu nombre y número de teléfono por aquí y un asesor humano te contactará lo antes posible.",
-        role: 'assistant' 
+        response: fallbackMsg,
+        role: 'assistant',
+        mode: 'HUMAN'
       });
     }
 
@@ -78,9 +110,15 @@ export async function POST(req: Request) {
       }
     } catch (aiError) {
       console.error('[WebChat API] AI Generation Error:', aiError);
+      const errorFallback = "Lo siento, estoy teniendo dificultades técnicas para procesar tu solicitud. Por favor indícame tu *Nombre*, *Email* y *Teléfono* para que un asesor te contacte personalmente.";
+      
+      await supabaseAdmin.from('conversations').update({ mode: 'HUMAN' }).eq('id', conversation.id);
+      await notifyAdminHandoff(null, conversation.id, internalId);
+
       return NextResponse.json({ 
-        response: "Lo siento, estoy experimentando una breve interrupción técnica. Si tu solicitud es urgente, por favor facilítanos tus datos de contacto y te llamaremos en la brevedad posible.",
-        role: 'assistant' 
+        response: errorFallback,
+        role: 'assistant',
+        mode: 'HUMAN'
       });
     }
 
