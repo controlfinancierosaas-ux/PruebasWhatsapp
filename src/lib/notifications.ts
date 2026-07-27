@@ -43,7 +43,6 @@ export async function notifyAdminHandoff(sock: WASocket | null, conversationId: 
     } else {
       console.warn('[Notification] No admin phone configured for WhatsApp alert.');
     }
-...
 
     // 4. Send Email Alert (if configured)
     if (adminEmail) {
