@@ -2,17 +2,27 @@ import OpenAI from 'openai';
 import { supabaseAdmin } from './supabase';
 import { botConfig } from './bot-config';
 
-const openai = new OpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPENROUTER_API_KEY,
-});
+// Instanciación perezosa para evitar errores en tiempo de build si falta la API Key
+let _openai: OpenAI | null = null;
+
+const getOpenAI = () => {
+  if (!_openai) {
+    _openai = new OpenAI({
+      baseURL: 'https://openrouter.ai/api/v1',
+      apiKey: process.env.OPENROUTER_API_KEY || 'dummy-key-for-build',
+    });
+  }
+  return _openai;
+};
 
 const DEFAULT_MODEL = 'google/gemini-2.0-flash-001';
 
 export const generateAIResponse = async (conversationId: string, userMessage: string) => {
   try {
+    const openai = getOpenAI();
     const model = process.env.AI_MODEL || DEFAULT_MODEL;
     console.log(`[OpenRouter] Using model: ${model}`);
+...
 
     // Fetch last 10 messages for better context
     const { data: history } = await supabaseAdmin
