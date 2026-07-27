@@ -77,17 +77,35 @@ export default function ConversationPanel({ conversation }: { conversation: any 
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-gray-600">Modo IA:</span>
+          {mode === 'HUMAN' ? (
             <button 
               onClick={toggleMode}
-              className={`relative h-6 w-11 rounded-full transition-colors ${mode === 'AI' ? 'bg-emerald-500' : 'bg-gray-300'}`}
+              className="bg-emerald-600 text-white text-[10px] font-black px-4 py-2 rounded-full shadow-md hover:bg-emerald-700 transition-all uppercase tracking-widest flex items-center gap-2"
             >
-              <div className={`absolute top-1 left-1 h-4 w-4 rounded-full bg-white transition-transform ${mode === 'AI' ? 'translate-x-5' : ''}`}></div>
+              <span className="h-2 w-2 bg-white rounded-full animate-pulse"></span>
+              Re-activar Bot
             </button>
-          </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-gray-600">Modo IA:</span>
+              <button 
+                onClick={toggleMode}
+                className={`relative h-6 w-11 rounded-full transition-colors ${mode === 'AI' ? 'bg-emerald-500' : 'bg-gray-300'}`}
+              >
+                <div className={`absolute top-1 left-1 h-4 w-4 rounded-full bg-white transition-transform ${mode === 'AI' ? 'translate-x-5' : ''}`}></div>
+              </button>
+            </div>
+          )}
         </div>
       </div>
+
+      {mode === 'HUMAN' && (
+        <div className="bg-amber-100 border-b border-amber-200 px-6 py-2 text-center">
+          <p className="text-[10px] font-bold text-amber-800 uppercase tracking-widest">
+            ⚠️ Atención Humana Activada - El bot está silenciado para este chat
+          </p>
+        </div>
+      )}
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
         {messages.map((msg) => (

@@ -60,3 +60,70 @@ export const generateAIResponse = async (conversationId: string, userMessage: st
     return null;
   }
 };
+
+export const generateConversationSummary = async (conversationId: string) => {
+  try {
+    const openai = getOpenAI();
+    const model = process.env.AI_MODEL || DEFAULT_MODEL;
+
+    const { data: history } = await supabaseAdmin
+      .from('messages')
+      .select('role, content')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true });
+
+    if (!history || history.length === 0) return 'Sin historial previo.';
+
+    const conversationText = history.map(m => \`\${m.role === 'user' ? 'Usuario' : 'Bot'}: \${m.content}\`).join('\n');
+
+    const prompt = \`Analiza la siguiente conversación entre un Bot y un Usuario. 
+    Realiza un resumen ejecutivo de máximo 3 párrafos explicando de qué trató la conversación, 
+    cuáles eran las dudas del usuario y por qué se requiere atención humana ahora.
+    
+    CONVERSACIÓN:
+    \${conversationText}\`;
+
+    const completion = await openai.chat.completions.create({
+      model,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.5,
+      max_tokens: 1000,
+    });
+
+    return completion.choices[0].message.content || 'No se pudo generar el resumen.';
+  } catch (error) {
+    console.error('[OpenRouter] Summary Error:', error);
+    return 'Error al generar resumen.';
+  }
+};
+
+export const detectHandoffIntent = async (userMessage: string) => {
+  try {
+    const openai = getOpenAI();
+    const model = DEFAULT_MODEL;
+
+    const prompt = \`Analiza el siguiente mensaje de un usuario en un chat de WhatsApp. 
+    Determina si el usuario:
+    1. Solicita explícitamente hablar con un humano, asesor, persona o operador.
+    2. Expresa frustración, enojo, ira o malestar significativo (insultos, quejas graves).
+    3. Está pidiendo algo que claramente el bot no puede resolver y requiere escalación.
+
+    Responde ÚNICAMENTE con la palabra "TRANSFERIR" si se cumple alguna de las anteriores, 
+    o "CONTINUAR" si el bot puede seguir manejando la conversación.
+    
+    MENSAJE DEL USUARIO: "\${userMessage}"\`;
+
+    const completion = await openai.chat.completions.create({
+      model,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0,
+      max_tokens: 10,
+    });
+
+    const decision = completion.choices[0].message.content?.trim().toUpperCase();
+    return decision === 'TRANSFERIR';
+  } catch (error) {
+    console.error('[OpenRouter] Intent Detection Error:', error);
+    return false;
+  }
+};

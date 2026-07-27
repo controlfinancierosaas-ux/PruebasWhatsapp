@@ -1,5 +1,43 @@
 # Seguimiento del Proyecto PruebasWhatsapp
 
+## [2026-07-27] Implementación de Sistema de Transferencia a Humano y Notificaciones Inteligentes
+
+### 1. Detección Inteligente de Hand-off
+- **Activación por Intención:** Se implementó un detector de intención (`detectHandoffIntent`) usando OpenRouter que identifica cuando un usuario solicita explícitamente hablar con un humano o cuando expresa frustración/enojo significativo.
+- **Detección Automática:** El bot ahora analiza el sentimiento del mensaje y, si detecta malestar, realiza la transferencia automáticamente para mejorar la satisfacción del cliente.
+
+### 2. Notificaciones Multi-canal (WhatsApp + Email)
+- **Alertas en Tiempo Real:** Cuando una conversación pasa a modo humano, el sistema envía notificaciones inmediatas al administrador.
+- **WhatsApp Admin:** Envío de alerta al número configurado con un link directo al dashboard y un resumen de la situación.
+- **Email (Gmail SMTP):** Envío de un correo electrónico formal usando las variables `SMTP_USER` y `SMTP_PASS`.
+- **Resúmenes con IA:** Antes de notificar, el bot genera un **resumen ejecutivo** de la conversación previa usando OpenRouter, permitiendo al humano entender el contexto sin leer todo el historial.
+
+### 3. Gestión de Modo Humano (Dashboard)
+- **Trazabilidad Visual:** La lista de conversaciones ahora resalta en naranja y con borde distintivo los chats que están en modo humano.
+- **Control Total:** Se añadió un botón prominente de **"Re-activar Bot"** en el panel de chat para que el operador pueda devolver el control a la IA una vez finalizada la atención manual.
+- **Silencio Inteligente:** Mientras un chat está en modo humano, el bot ignora los mensajes entrantes del usuario, permitiendo una conversación fluida con el asesor.
+
+### 4. Flujo de Error y Captura de Datos
+- **Manejo de Fallos:** Si el bot tiene errores técnicos o no está configurado, ahora se disculpa formalmente y solicita proactivamente al usuario su **Nombre, Email y Teléfono**.
+- **Escalación Forzada:** Tras solicitar los datos, el chat se marca automáticamente como humano para asegurar que la solicitud no se pierda.
+
+### SQL Requerido para Actualización:
+```sql
+-- Asegurar campos de administrador en bot_settings
+ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS admin_email text;
+ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS admin_phone text;
+
+-- Asegurar modo en conversaciones
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS mode text DEFAULT 'AI';
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS real_phone text;
+
+-- Índices recomendados para rendimiento
+CREATE INDEX IF NOT EXISTS idx_conversations_mode ON conversations(mode);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
+```
+
+---
+
 ## [2026-07-27] Implementación de Web Chat Widget e Integración Híbrida
 
 ### 1. Web Chat Widget (Floating UI)

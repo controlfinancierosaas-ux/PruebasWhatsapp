@@ -42,16 +42,21 @@ export default function ConversationList({
           <div 
             key={conv.id}
             onClick={() => onSelect(conv)}
-            className={`flex items-center gap-3 p-4 cursor-pointer transition-colors hover:bg-gray-50 ${selectedId === conv.id ? 'bg-emerald-50' : ''}`}
+            className={`flex items-center gap-3 p-4 cursor-pointer transition-colors hover:bg-gray-50 
+              ${selectedId === conv.id ? 'bg-emerald-50' : ''}
+              ${conv.mode === 'HUMAN' ? 'border-l-4 border-l-amber-500 bg-amber-50/30' : ''}
+            `}
           >
-            <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-500 uppercase">
+            <div className={`h-12 w-12 rounded-full flex items-center justify-center font-bold text-gray-500 uppercase 
+              ${conv.mode === 'HUMAN' ? 'bg-amber-200 text-amber-800' : 'bg-gray-200'}
+            `}>
               {conv.name.substring(0, 1)}
             </div>
             <div className="flex-1 overflow-hidden">
               <div className="flex justify-between items-center">
                 <p className="font-bold text-gray-800 truncate">{conv.name}</p>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${conv.mode === 'AI' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                  {conv.mode}
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${conv.mode === 'AI' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-500 text-white shadow-sm'}`}>
+                  {conv.mode === 'AI' ? 'BOT' : 'HUMANO'}
                 </span>
               </div>
               <div className="flex items-center gap-1 text-xs text-gray-500 overflow-hidden">

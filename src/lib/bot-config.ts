@@ -14,6 +14,8 @@ export interface BotConfig {
   custom_prompt_override: string;
   prohibitions: string;
   handover_message: string;
+  admin_email?: string;
+  admin_phone?: string;
 }
 
 class BotConfigManager {
@@ -30,7 +32,9 @@ class BotConfigManager {
     additional_info: '',
     custom_prompt_override: '',
     prohibitions: '',
-    handover_message: 'En un momento te contactará un agente humano para ayudarte mejor.'
+    handover_message: 'En un momento te contactará un agente humano para ayudarte mejor.',
+    admin_email: '',
+    admin_phone: ''
   };
 
   private static instance: BotConfigManager;
@@ -88,7 +92,9 @@ class BotConfigManager {
       additional_info: data.additional_info || '',
       custom_prompt_override: data.custom_prompt_override || '',
       prohibitions: data.prohibitions || '',
-      handover_message: data.handover_message || 'En un momento te contactará un agente humano para ayudarte mejor.'
+      handover_message: data.handover_message || 'En un momento te contactará un agente humano para ayudarte mejor.',
+      admin_email: data.admin_email || '',
+      admin_phone: data.admin_phone || ''
     };
   }
 
