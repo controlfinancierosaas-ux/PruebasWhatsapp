@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { generateAIResponse, detectHandoffIntent } from '@/lib/openrouter';
 import { botConfig } from '@/lib/bot-config';
-import { notifyAdminHandoff } from '@/lib/notifications';
+import { notifyAdminHandoff, notifyAdminUnconfiguredLead } from '@/lib/notifications';
+import { startCaptureFlow, getCaptureState, processCaptureStep } from '@/lib/capture-flow';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,12 +27,11 @@ export async function POST(req: Request) {
     if (!conversation) {
       const { data: newConv, error: convError } = await supabaseAdmin
         .from('conversations')
-        .insert({ 
-          phone: internalId, 
+        .insert({
+          phone: internalId,
           real_phone: internalId,
-          name: name || `Web User ${sessionId.substring(0, 5)}`, 
-          mode: 'AI',
-          metadata: { step: 'START' }
+          name: name || `Web User ${sessionId.substring(0, 5)}`,
+          mode: 'AI'
         })
         .select()
         .single();
@@ -59,42 +59,39 @@ export async function POST(req: Request) {
     }
 
     // --- CHECK FOR CAPTURING DATA MODE ---
-    // If the conversation is marked as capturing, process that flow immediately.
+    // Igual que en WhatsApp: se consulta el estado ACTUAL desde la BD en cada mensaje,
+    // usando el mismo módulo compartido (capture_step/capture_name/capture_email/capture_phone)
+    // para evitar desincronización entre canales. NUNCA se llama a la IA en este flujo.
     if (conversation.mode === 'CAPTURING_DATA') {
-      const metadata = conversation.metadata || {};
-      const currentStep = metadata.step || 'NAME';
-      let nextStep = 'NAME';
-      let response = '';
-      
-      console.log(`[DataCapture DEBUG] Step: ${currentStep}, Input: "${message}"`);
+      const currentState = await getCaptureState(conversation.id);
+      const result = await processCaptureStep(conversation.id, currentState?.capture_step ?? null, message);
 
-      if (currentStep === 'NAME') {
-        metadata.name = message;
-        nextStep = 'EMAIL';
-        response = 'Gracias. Ahora, por favor indícame tu *Email*.';
-      } else if (currentStep === 'EMAIL') {
-        metadata.email = message;
-        nextStep = 'PHONE';
-        response = 'Perfecto. Finalmente, indícame tu *Número de Teléfono*.';
-      } else if (currentStep === 'PHONE') {
-        metadata.phone = message;
-        
-        await supabaseAdmin.from('conversations').update({ mode: 'HUMAN', metadata: { ...metadata, step: 'COMPLETED' } }).eq('id', conversation.id);
-        await notifyAdminHandoff(null, conversation.id, internalId);
-        
-        response = '¡Muchas gracias! He registrado tus datos correctamente. Nuestro equipo humano ha sido notificado y se pondrá en contacto contigo a la brevedad posible.';
-        return NextResponse.json({ response, role: 'assistant', mode: 'HUMAN' });
+      if (result.completed && result.capturedData) {
+        await notifyAdminUnconfiguredLead(
+          null,
+          conversation.id,
+          internalId,
+          result.capturedData.name,
+          result.capturedData.email,
+          result.capturedData.phone
+        );
+        return NextResponse.json({ response: result.reply, role: 'assistant', mode: 'HUMAN' });
       }
 
-      await supabaseAdmin.from('conversations').update({ metadata: { ...metadata, step: nextStep } }).eq('id', conversation.id);
-      return NextResponse.json({ response, role: 'assistant', mode: 'AI' });
+      return NextResponse.json({ response: result.reply, role: 'assistant', mode: 'AI' });
     }
 
     // --- AI / CONFIGURATION CHECK ---
     const dynamicPrompt = botConfig.generateSystemPrompt();
     if (!dynamicPrompt || dynamicPrompt.trim() === "") {
-        // Start capture
-        await supabaseAdmin.from('conversations').update({ mode: 'CAPTURING_DATA', metadata: { step: 'NAME' } }).eq('id', conversation.id);
+        const started = await startCaptureFlow(conversation.id);
+        if (!started) {
+          return NextResponse.json({
+            response: '¡Hola! Parece que tenemos problemas técnicos. Un asesor humano revisará tu caso a la brevedad.',
+            role: 'assistant',
+            mode: 'HUMAN'
+          });
+        }
         return NextResponse.json({ 
             response: '¡Hola! Parece que tenemos problemas técnicos. Para poder ayudarte, indícame tu *Nombre completo*.',
             role: 'assistant',
@@ -133,7 +130,14 @@ export async function POST(req: Request) {
       }
     } catch (aiError) {
       console.error('[WebChat API] AI Generation Error:', aiError);
-      await supabaseAdmin.from('conversations').update({ mode: 'CAPTURING_DATA', metadata: { step: 'NAME' } }).eq('id', conversation.id);
+      const started = await startCaptureFlow(conversation.id);
+      if (!started) {
+        return NextResponse.json({
+          response: 'Lo siento, tengo dificultades técnicas. Un asesor humano revisará tu caso a la brevedad.',
+          role: 'assistant',
+          mode: 'HUMAN'
+        });
+      }
       return NextResponse.json({ 
         response: "Lo siento, tengo dificultades técnicas. Para que un asesor te contacte, por favor indícame tu *Nombre completo*.",
         role: 'assistant',

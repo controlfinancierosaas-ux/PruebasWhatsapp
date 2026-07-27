@@ -1,5 +1,50 @@
 # Seguimiento del Proyecto PruebasWhatsapp
 
+## [2026-07-27] FIX CRÍTICO: Causa raíz real del bucle infinito (CHECK constraint + endpoint duplicado)
+
+**El bucle seguía ocurriendo pese a la corrección anterior.** Investigación más profunda encontró DOS causas raíz reales:
+
+### 1. CHECK constraint en Supabase bloqueaba el estado `CAPTURING_DATA`
+La tabla `conversations` fue creada originalmente con:
+```sql
+mode text CHECK(mode IN ('AI','HUMAN')) NOT NULL DEFAULT 'AI'
+```
+Este constraint **nunca permitió** el valor `'CAPTURING_DATA'`. Cada vez que el código intentaba `UPDATE conversations SET mode = 'CAPTURING_DATA'`, Supabase rechazaba la operación silenciosamente (el código no verificaba `error`). El estado nunca cambiaba en la base de datos, por lo que cada mensaje del usuario volvía a caer en el flujo "no configurado" desde cero → bucle infinito repitiendo siempre la misma pregunta.
+
+**Acción requerida (ver `scripts/fix_capturing_data_loop.sql`):** ejecutar en Supabase para reemplazar el constraint y permitir `'CAPTURING_DATA'`.
+
+### 2. El endpoint de Web Chat (`/api/web-chat/route.ts`) usaba una columna `metadata` inexistente/no unificada
+Tenía su propia implementación duplicada del flujo de captura basada en `conversation.metadata.step`, independiente de las columnas `capture_step/capture_name/capture_email/capture_phone` usadas por WhatsApp. Esto generaba inconsistencia entre canales y, si la columna `metadata` no existía o no era consistente, el estado tampoco persistía correctamente.
+
+**Corrección aplicada:**
+- Se creó `src/lib/capture-flow.ts`: módulo único y compartido con la lógica de captura (`startCaptureFlow`, `getCaptureState`, `processCaptureStep`), usado ahora tanto por `src/lib/baileys/handler.ts` (WhatsApp) como por `src/app/api/web-chat/route.ts` (Web Chat). Se eliminó el uso de la columna `metadata`.
+- Todas las escrituras críticas de estado ahora verifican el `error` devuelto por Supabase y lo registran en consola, para detectar este tipo de fallos de esquema en el futuro sin ambigüedad.
+- **Teléfono ahora es OPCIONAL**: tras el email, se solicita el teléfono pero el usuario puede escribir `"omitir"` (o variantes como "no", "n/a") o dejarlo vacío, y el flujo se completa igual con nombre + email + teléfono = "No proporcionado".
+- Al completar la captura (con o sin teléfono): se notifica al administrador por **WhatsApp y Email** (`notifyAdminUnconfiguredLead`) con los datos capturados, y la conversación pasa a `mode = 'HUMAN'`, desactivando la respuesta automatizada de IA para ese chat.
+
+### SQL requerido (CRÍTICO, ejecutar antes de probar de nuevo):
+Ver archivo completo: `scripts/fix_capturing_data_loop.sql`
+```sql
+ALTER TABLE conversations DROP CONSTRAINT IF EXISTS conversations_mode_check;
+ALTER TABLE conversations
+  ADD CONSTRAINT conversations_mode_check
+  CHECK (mode IN ('AI', 'HUMAN', 'CAPTURING_DATA'));
+
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS capture_step text DEFAULT NULL;
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS capture_name text;
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS capture_email text;
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS capture_phone text;
+
+CREATE INDEX IF NOT EXISTS idx_conversations_capture_step
+  ON conversations(capture_step) WHERE capture_step IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_conversations_mode_capture
+  ON conversations(mode, capture_step) WHERE mode = 'CAPTURING_DATA';
+```
+
+**Pendiente de tu parte:** ejecutar ese SQL en el editor de Supabase. Sin ese cambio de constraint, el bucle continuará ocurriendo sin importar el código, porque la base de datos rechaza el estado `CAPTURING_DATA`.
+
+---
+
 ## [2026-07-27] Fix: Eliminar llamada a la IA durante CAPTURING_DATA (bucle residual)
 
 **Problema detectado en revisión:** El flujo de captura paso a paso (`CAPTURING_DATA`) ya persistía el estado correctamente en BD, pero `handleMessage` seguía invocando `detectHandoffIntent` (llamada a la IA) en **cada mensaje del usuario, incluso durante la captura**, antes de verificar el modo `CAPTURING_DATA`. Esto contradice el requisito de no intentar comunicarse con la IA mientras se capturan NAME → EMAIL → PHONE, y añadía latencia/llamadas innecesarias a OpenRouter cuando precisamente la IA es la que está fallando o sin configurar.

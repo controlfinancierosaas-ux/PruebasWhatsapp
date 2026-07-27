@@ -4,6 +4,7 @@ import { generateAIResponse, detectHandoffIntent } from '../openrouter';
 import { botConfig } from '../bot-config';
 import { notifyAdminHandoff } from '../notifications';
 import { notifyAdminUnconfiguredLead } from '../notifications';
+import { startCaptureFlow, getCaptureState, processCaptureStep } from '../capture-flow';
 
 export const handleMessage = async (sock: WASocket, msg: WAMessage) => {
   const remoteJid = msg.key.remoteJid;
@@ -130,144 +131,56 @@ export const handleMessage = async (sock: WASocket, msg: WAMessage) => {
 
 /**
  * Maneja la captura de datos paso a paso cuando el bot no está configurado o falla.
- * Flujo: NAME -> EMAIL -> PHONE -> Notificar admin y pasar a HUMAN
+ * Flujo: NAME -> EMAIL -> PHONE (opcional) -> Notificar admin (email + WhatsApp) y pasar a HUMAN.
+ * Usa el módulo compartido `capture-flow` para garantizar el mismo comportamiento
+ * que el canal Web Chat y evitar que el estado se desincronice entre canales.
  */
 async function handleUnconfiguredFlow(sock: WASocket, conversation: any, remoteJid: string, isError: boolean = false) {
-  const config = botConfig.getConfig();
-  
-  const apology = isError 
+  const apology = isError
     ? 'Lo siento, estoy teniendo dificultades técnicas para procesar tu solicitud.'
     : '¡Hola! Aún no he sido configurado completamente.';
-  
-  // Mensaje inicial pidiendo SOLO el nombre
-  const greeting = config.unconfigured_greeting || '¡Hola! Aún no he sido configurado completamente.';
 
-  await sock.sendMessage(remoteJid, { 
-    text: `${apology}\n\nPara que un asesor humano te contacte, necesito algunos datos.\n\n*¿Cuál es tu nombre completo?*` 
+  const started = await startCaptureFlow(conversation.id);
+
+  if (!started) {
+    // No se pudo persistir el estado de captura (probable problema de esquema en Supabase).
+    // Aun así respondemos y dejamos log claro; no reintentamos con la IA.
+    await sock.sendMessage(remoteJid, {
+      text: `${apology}\n\nUn asesor humano revisará tu caso a la brevedad.`
+    });
+    return;
+  }
+
+  await sock.sendMessage(remoteJid, {
+    text: `${apology}\n\nPara que un asesor humano te contacte, necesito algunos datos.\n\n*¿Cuál es tu nombre completo?*`
   });
-
-  // Marcar conversación en modo CAPTURING_DATA e iniciar en paso NAME
-  await supabaseAdmin
-    .from('conversations')
-    .update({ 
-      mode: 'CAPTURING_DATA',
-      capture_step: 'NAME',
-      capture_name: null,
-      capture_email: null,
-      capture_phone: null
-    })
-    .eq('id', conversation.id);
 }
 
 /**
- * Maneja cada paso de la captura de datos verificando el estado desde la BD en cada paso.
- * NAME -> EMAIL -> PHONE -> Notify Admin -> HUMAN
+ * Maneja cada paso de la captura de datos consultando el estado ACTUAL desde la BD.
+ * NUNCA intenta comunicarse con la IA durante este proceso.
  */
 async function handleCapturingData(sock: WASocket, conversation: any, remoteJid: string, userContent: string) {
-  // Consultar estado ACTUAL desde la BD para evitar estados desincronizados
-  const { data: currentConv } = await supabaseAdmin
-    .from('conversations')
-    .select('capture_step, capture_name, capture_email, capture_phone')
-    .eq('id', conversation.id)
-    .single();
-
+  const currentConv = await getCaptureState(conversation.id);
   if (!currentConv) return;
 
-  const step = currentConv.capture_step;
-  const userInput = userContent.trim();
+  const result = await processCaptureStep(conversation.id, currentConv.capture_step, userContent);
 
-  // --- Paso NAME ---
-  if (step === 'NAME') {
-    if (!userInput || userInput.length < 2) {
-      await sock.sendMessage(remoteJid, { 
-        text: 'Por favor, indícame tu *nombre completo* para continuar.' 
-      });
-      return;
-    }
-
-    await supabaseAdmin
-      .from('conversations')
-      .update({ 
-        capture_name: userInput,
-        capture_step: 'EMAIL' 
-      })
-      .eq('id', conversation.id);
-
-    await sock.sendMessage(remoteJid, { 
-      text: `Gracias, ${userInput.split(' ')[0]}.\n\nAhora indícame tu *correo electrónico* para contactarte.` 
-    });
-    return;
+  if (result.reply) {
+    await sock.sendMessage(remoteJid, { text: result.reply });
   }
 
-  // --- Paso EMAIL ---
-  if (step === 'EMAIL') {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(userInput)) {
-      await sock.sendMessage(remoteJid, { 
-        text: 'El formato del correo no parece válido. Por favor, indícame un *correo electrónico* correcto (ej: nombre@correo.com).' 
-      });
-      return;
-    }
-
-    await supabaseAdmin
-      .from('conversations')
-      .update({ 
-        capture_email: userInput,
-        capture_step: 'PHONE' 
-      })
-      .eq('id', conversation.id);
-
-    await sock.sendMessage(remoteJid, { 
-      text: 'Perfecto.\n\nPor último, indícame tu *número de teléfono* para que un asesor pueda comunicarse contigo (incluye código de país, ej: +54 11 1234-5678).' 
-    });
-    return;
-  }
-
-  // --- Paso PHONE ---
-  if (step === 'PHONE') {
-    // Aceptar cualquier cosa que parezca un teléfono (mínimo 7 dígitos)
-    const digitsOnly = userInput.replace(/\D/g, '');
-    if (digitsOnly.length < 7) {
-      await sock.sendMessage(remoteJid, { 
-        text: 'El número ingresado no parece válido. Por favor, indícame tu *número de teléfono* completo (ej: +54 11 1234-5678).' 
-      });
-      return;
-    }
-
-    // Guardar teléfono y completar captura
-    await supabaseAdmin
-      .from('conversations')
-      .update({ 
-        capture_phone: userInput,
-        capture_step: 'DONE' 
-      })
-      .eq('id', conversation.id);
-
-    // Mensaje de cierre al usuario
-    await sock.sendMessage(remoteJid, { 
-      text: '¡Listo! He registrado tu información.\n\nUn asesor humano se pondrá en contacto contigo a la brevedad. Mientras tanto, ¿en qué más puedo ayudarte?' 
-    });
-
-    // Cambiar a modo HUMAN para que un asesor atienda
-    await supabaseAdmin
-      .from('conversations')
-      .update({ mode: 'HUMAN' })
-      .eq('id', conversation.id);
-
-    // Notificar al admin con TODOS los datos capturados
+  if (result.completed && result.capturedData) {
+    const userPhoneContact = result.capturedData.phone;
     const userPhone = conversation.real_phone || conversation.phone;
-    await notifyAdminUnconfiguredLead(sock, conversation.id, userPhone, userInput, currentConv.capture_email, userContent);
-
-    return;
-  }
-
-  // Si el paso ya es DONE o no se reconoce, pasar a HUMAN directamente
-  if (step === 'DONE' || !step) {
-    await supabaseAdmin
-      .from('conversations')
-      .update({ mode: 'HUMAN' })
-      .eq('id', conversation.id);
-    return;
+    await notifyAdminUnconfiguredLead(
+      sock,
+      conversation.id,
+      userPhone,
+      result.capturedData.name,
+      result.capturedData.email,
+      userPhoneContact
+    );
   }
 }
 
