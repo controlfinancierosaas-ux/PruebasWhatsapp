@@ -1,5 +1,77 @@
 # Seguimiento del Proyecto PruebasWhatsapp
 
+## [2026-07-27] Fix Loop - Captura Paso a Paso + Configuración Extendida de IA
+
+### 1. Corrección del Bucle de Fallas del Bot (CRÍTICO)
+
+**Problema anterior:** Cuando el bot no estaba configurado o fallaba, siempre pedía "nombre y correo" en un solo mensaje. El siguiente mensaje del usuario volvía a activar el mismo flujo, creando un bucle infinito que nunca avanzaba.
+
+**Solución implementada:**
+- Nuevo modo de conversación `CAPTURING_DATA` que persiste en la BD y se consulta en cada mensaje.
+- Captura **secuencial y stateful**: `NAME → EMAIL → PHONE` (un dato a la vez).
+- Cada paso se almacena en la BD (`capture_step`, `capture_name`, `capture_email`, `capture_phone`) y se **consulta en cada mensaje** para evitar desincronización.
+- Validación de email con regex y teléfono con mínimo de dígitos.
+- Al completar la captura, se cambia a `HUMAN` y se envía notificación dual al admin.
+
+**Flujo corregido:**
+1. Usuario envía "hola" → Bot sin configurar → Mensaje: "¿Cuál es tu nombre completo?"
+2. Usuario envía "jose manuel linares" → Bot responde: "Gracias, jose. Indícame tu correo electrónico..."
+3. Usuario envía "jose@email.com" → Bot responde: "Por último, indícame tu número de teléfono..."
+4. Usuario envía "+54 11 1234-5678" → Bot responde: "¡Listo! Un asesor te contactará..." + Notifica al admin
+
+### 2. Notificación Dual al Admin (Lead No Atendido)
+
+Nueva función `notifyAdminUnconfiguredLead` en `notifications.ts`:
+- **WhatsApp al admin:** Muestra nombre, email, teléfono de contacto, WhatsApp del cliente e historial del chat.
+- **Email al admin:** HTML formateado con tabla de datos del cliente + historial + botón al dashboard.
+- Sujeto del email: "🤖 Lead - El bot no estaba configurado (+teléfono)"
+
+### 3. Configuración Extendida del Sistema (Nueva Sección)
+
+Página `system-settings` ampliada con:
+
+**Configuración de IA:**
+- `ai_model` — Selector de modelo OpenRouter con 10 opciones predefinidas + opción custom.
+- `ai_temperature` — Presets visuales (0.0 Determinista / 0.5 Balanceado / 0.7 Creativo / 1.0).
+- `ai_max_tokens` — Longitud máxima de respuesta (50-4000).
+- `openrouter.ts` actualizado para leer `ai_model`, `ai_temperature`, `ai_max_tokens` desde `botConfig.getConfig()`.
+
+**Comportamiento:**
+- `unconfigured_greeting` — Mensaje personalizado cuando el bot no está configurado.
+- `greeting_enabled` — Toggle para activar/desactivar la captura automática de datos.
+
+**Herramientas:**
+- Botón "Enviar Email de Prueba" → Envía email de prueba al admin para verificar SMTP.
+- Nueva API route `/api/test-email` para enviar emails de prueba.
+
+### 4. Actualización de Interfaces
+
+- `BotConfig` en `bot-config.ts` ampliado con: `ai_model`, `ai_temperature`, `ai_max_tokens`, `unconfigured_greeting`, `greeting_enabled`, `max_human_messages`.
+- `BotConfigManager.updateInternalConfig()` actualizado para leer los nuevos campos.
+
+### SQL Requerido para Actualización:
+```sql
+-- Nuevos campos en conversations para captura paso a paso
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS capture_step text DEFAULT NULL;
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS capture_name text;
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS capture_email text;
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS capture_phone text;
+
+-- Nuevos campos en bot_settings para configuración de IA
+ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS ai_model text DEFAULT 'google/gemini-2.0-flash-001';
+ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS ai_temperature numeric DEFAULT 0.7;
+ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS ai_max_tokens integer DEFAULT 500;
+ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS unconfigured_greeting text;
+ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS greeting_enabled boolean DEFAULT true;
+ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS max_human_messages integer DEFAULT 10;
+
+-- Índices para rendimiento en captura
+CREATE INDEX IF NOT EXISTS idx_conversations_capture_step ON conversations(capture_step) WHERE capture_step IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_conversations_mode_capture ON conversations(mode, capture_step) WHERE mode = 'CAPTURING_DATA';
+```
+
+---
+
 ## [2026-07-27] Corrección: Flujo de captura de datos paso a paso ante fallas del Bot
 - Se implementó un sistema de estado (`CAPTURING_DATA`) en la API para manejar la captura de datos del usuario de forma secuencial (Nombre -> Email -> Teléfono) cuando el bot falla o no está configurado.
 - El bot ahora solicita un dato a la vez y espera la respuesta del usuario, evitando el bucle de mensajes de error.

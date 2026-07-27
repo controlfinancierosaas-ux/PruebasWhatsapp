@@ -16,12 +16,20 @@ const getOpenAI = () => {
 };
 
 const DEFAULT_MODEL = 'google/gemini-2.0-flash-001';
+const DEFAULT_TEMPERATURE = 0.7;
+const DEFAULT_MAX_TOKENS = 500;
 
 export const generateAIResponse = async (conversationId: string, userMessage: string) => {
   try {
     const openai = getOpenAI();
-    const model = process.env.AI_MODEL || DEFAULT_MODEL;
-    console.log(`[OpenRouter] Using model: ${model}`);
+    
+    // Leer configuración del modelo desde bot_settings en memoria
+    const config = botConfig.getConfig();
+    const model = config.ai_model || process.env.AI_MODEL || DEFAULT_MODEL;
+    const temperature = config.ai_temperature ?? DEFAULT_TEMPERATURE;
+    const maxTokens = config.ai_max_tokens ?? DEFAULT_MAX_TOKENS;
+
+    console.log(`[OpenRouter] Using model: ${model}, temp: ${temperature}, maxTokens: ${maxTokens}`);
 
     // Fetch last 10 messages for better context
     const { data: history } = await supabaseAdmin
@@ -43,8 +51,8 @@ export const generateAIResponse = async (conversationId: string, userMessage: st
     const completion = await openai.chat.completions.create({
       model,
       messages,
-      temperature: 0.7,
-      max_tokens: 500,
+      temperature,
+      max_tokens: maxTokens,
     });
 
     const response = completion.choices[0].message.content;
@@ -64,7 +72,8 @@ export const generateAIResponse = async (conversationId: string, userMessage: st
 export const generateConversationSummary = async (conversationId: string) => {
   try {
     const openai = getOpenAI();
-    const model = process.env.AI_MODEL || DEFAULT_MODEL;
+    const config = botConfig.getConfig();
+    const model = config.ai_model || process.env.AI_MODEL || DEFAULT_MODEL;
 
     const { data: history } = await supabaseAdmin
       .from('messages')
@@ -100,7 +109,7 @@ export const generateConversationSummary = async (conversationId: string) => {
 export const detectHandoffIntent = async (userMessage: string) => {
   try {
     const openai = getOpenAI();
-    const model = DEFAULT_MODEL;
+    const model = DEFAULT_MODEL; // Usar modelo rápido para detección de intención
 
     const prompt = `Analiza el siguiente mensaje de un usuario en un chat de WhatsApp. 
     Determina si el usuario:

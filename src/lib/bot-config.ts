@@ -16,6 +16,13 @@ export interface BotConfig {
   handover_message: string;
   admin_email?: string;
   admin_phone?: string;
+  // Nuevas configuraciones
+  ai_model?: string;
+  ai_temperature?: number;
+  ai_max_tokens?: number;
+  unconfigured_greeting?: string;
+  greeting_enabled?: boolean;
+  max_human_messages?: number;
 }
 
 class BotConfigManager {
@@ -34,7 +41,13 @@ class BotConfigManager {
     prohibitions: '',
     handover_message: 'En un momento te contactará un agente humano para ayudarte mejor.',
     admin_email: '',
-    admin_phone: ''
+    admin_phone: '',
+    ai_model: 'google/gemini-2.0-flash-001',
+    ai_temperature: 0.7,
+    ai_max_tokens: 500,
+    unconfigured_greeting: '¡Hola! Aún no he sido configurado completamente.',
+    greeting_enabled: true,
+    max_human_messages: 10
   };
 
   private static instance: BotConfigManager;
@@ -94,7 +107,13 @@ class BotConfigManager {
       prohibitions: data.prohibitions || '',
       handover_message: data.handover_message || 'En un momento te contactará un agente humano para ayudarte mejor.',
       admin_email: data.admin_email || '',
-      admin_phone: data.admin_phone || ''
+      admin_phone: data.admin_phone || '',
+      ai_model: data.ai_model || 'google/gemini-2.0-flash-001',
+      ai_temperature: typeof data.ai_temperature === 'number' ? data.ai_temperature : 0.7,
+      ai_max_tokens: typeof data.ai_max_tokens === 'number' ? data.ai_max_tokens : 500,
+      unconfigured_greeting: data.unconfigured_greeting || '¡Hola! Aún no he sido configurado completamente.',
+      greeting_enabled: data.greeting_enabled !== false,
+      max_human_messages: typeof data.max_human_messages === 'number' ? data.max_human_messages : 10
     };
   }
 
