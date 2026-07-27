@@ -25,9 +25,7 @@ export default function SettingsPage() {
     additional_info: '',
     custom_prompt_override: '',
     prohibitions: 'No inventar precios ni promociones\nNo prometer plazos exactos\nNo hablar mal de la competencia\nNo salirse del tema del negocio',
-    handover_message: 'En un momento te contactará un agente humano para ayudarte mejor.',
-    admin_email: '',
-    admin_phone: ''
+    handover_message: 'En un momento te contactará un agente humano para ayudarte mejor.'
   });
 
   const [customTone, setCustomTone] = useState('');
@@ -64,9 +62,7 @@ export default function SettingsPage() {
         additional_info: data.additional_info || '',
         custom_prompt_override: data.custom_prompt_override || '',
         prohibitions: sanitizedProhibitions,
-        handover_message: data.handover_message || 'En un momento te contactará un agente humano para ayudarte mejor.',
-        admin_email: data.admin_email || '',
-        admin_phone: data.admin_phone || ''
+        handover_message: data.handover_message || 'En un momento te contactará un agente humano para ayudarte mejor.'
       });
 
       if (tone && !predefinedTones.includes(tone)) {
@@ -193,9 +189,7 @@ export default function SettingsPage() {
       additional_info: '',
       custom_prompt_override: '',
       prohibitions: '',
-      handover_message: 'En un momento te contactará un agente humano para ayudarte mejor.',
-      admin_email: '',
-      admin_phone: ''
+      handover_message: 'En un momento te contactará un agente humano para ayudarte mejor.'
     };
 
     const { error } = await supabase
@@ -417,38 +411,6 @@ export default function SettingsPage() {
                   onChange={(e) => setSettings({...settings, handover_message: e.target.value})}
                   className="w-full rounded-xl border-gray-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500"
                 />
-              </div>
-
-              {/* Sección 7: Alertas y Notificaciones */}
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-emerald-200 ring-4 ring-emerald-50/50">
-                <h2 className="text-xs font-black text-emerald-600 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                  <span className="h-4 w-1 bg-emerald-500 rounded-full"></span>
-                  7. CONFIGURACIÓN DE NOTIFICACIONES (ADMIN) 🔔
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Email del Administrador (Alertas)</label>
-                    <input 
-                      type="email"
-                      value={settings.admin_email}
-                      onChange={(e) => setSettings({...settings, admin_email: e.target.value})}
-                      placeholder="admin@ejemplo.com"
-                      className="w-full rounded-xl border-gray-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                    <p className="mt-1 text-[9px] text-gray-400 italic">Se enviará un resumen de la conversación cuando el bot pase a modo humano.</p>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">WhatsApp del Administrador (Alertas)</label>
-                    <input 
-                      type="text"
-                      value={settings.admin_phone}
-                      onChange={(e) => setSettings({...settings, admin_phone: e.target.value})}
-                      placeholder="584121234567"
-                      className="w-full rounded-xl border-gray-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                    <p className="mt-1 text-[9px] text-gray-400 italic">Número internacional sin el símbolo '+'. Ej: 584121234567</p>
-                  </div>
-                </div>
               </div>
 
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
