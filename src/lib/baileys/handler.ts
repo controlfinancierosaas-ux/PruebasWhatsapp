@@ -86,26 +86,34 @@ export const handleMessage = async (sock: WASocket, msg: WAMessage) => {
     const dynamicPrompt = botConfig.generateSystemPrompt();
 
     // Si el prompt está vacío, el bot está en modo "lavado de cerebro" (limpio)
-    if (!dynamicPrompt) {
-      console.log(`[AI] Bot is unconfigured/neutral. Skipping response.`);
+    if (!dynamicPrompt || dynamicPrompt.trim() === "") {
+      console.log(`[AI] Bot is unconfigured/neutral. Sending fallback message.`);
+      const fallbackMsg = "¡Hola! En este momento nuestro sistema de atención automática está en mantenimiento. Por favor, deja tu consulta aquí y un asesor te responderá a la brevedad.";
+      await sock.sendMessage(remoteJid!, { text: fallbackMsg });
       return;
     }
 
     console.log(`[AI] Generating response for ${internalId}...`);
-    const aiResponse = await generateAIResponse(conversation.id, content);
-    
-    if (aiResponse) {
-      console.log(`[AI] Response generated: ${aiResponse.substring(0, 50)}...`);
-      await sock.sendMessage(remoteJid!, { text: aiResponse });
+    try {
+      const aiResponse = await generateAIResponse(conversation.id, content);
       
-      // Save AI message
-      await supabaseAdmin.from('messages').insert({
-        conversation_id: conversation.id,
-        role: 'assistant',
-        content: aiResponse
-      });
-    } else {
-      console.error(`[AI] Failed to generate response for ${internalId}`);
+      if (aiResponse) {
+        console.log(`[AI] Response generated: ${aiResponse.substring(0, 50)}...`);
+        await sock.sendMessage(remoteJid!, { text: aiResponse });
+        
+        // Save AI message
+        await supabaseAdmin.from('messages').insert({
+          conversation_id: conversation.id,
+          role: 'assistant',
+          content: aiResponse
+        });
+      } else {
+        throw new Error('Empty AI response');
+      }
+    } catch (e) {
+      console.error(`[AI] Error generating response for ${internalId}:`, e);
+      const errorFallback = "Lo siento, tuve un problema técnico al procesar tu mensaje. Un asesor humano revisará tu caso pronto.";
+      await sock.sendMessage(remoteJid!, { text: errorFallback });
     }
   } else {
     console.log(`[AI] Skipped (Global: ${isGlobalAIEnabled}, Chat: ${conversation.mode})`);

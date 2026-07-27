@@ -47,24 +47,13 @@
 - **Nuevos Campos:** Se añadieron columnas `status`, `error_message`, `sent_at` y `whatsapp_message_id`.
 - **Lógica del Worker:** El bot actualiza estos campos automáticamente. Si hay un error, el motivo queda registrado para consulta externa.
 
-### 5. Guía de Integración para Proyectos Externos
-Para enviar mensajes desde otro proyecto y rastrear su estado:
-
-#### Paso 1: Envío y Obtención del ID
-**Opción A (Supabase Client):**
-```javascript
-const { data } = await supabase.from('outbox').insert({ phone: '58412...', content: '...' }).select('id').single();
-const msgId = data.id;
-```
-**Opción B (SQL):**
-```sql
-INSERT INTO outbox (phone, content) VALUES ('58412...', '...') RETURNING id;
-```
-
-#### Paso 2: Seguimiento del Estado
-```sql
-SELECT status, error_message, sent_at FROM outbox WHERE id = 'ID_CAPTURADO';
-```
+### 5. Manejo de Errores Transparente y Fallbacks Corteses
+- **Problema:** Errores técnicos (como falta de API Key o bot sin configurar) se mostraban al usuario o causaban silencio absoluto.
+- **Solución:** Implementado un sistema de "Manejo de Errores Transparente".
+- **Comportamiento:**
+  - **Bot Limpio/Neutral:** Si no hay un prompt configurado, el bot (tanto en Web como WhatsApp) responde cortésmente indicando que está en mantenimiento e invita al usuario a dejar sus datos de contacto para ser atendido por un humano.
+  - **Fallas Técnicas:** Si la IA falla al generar una respuesta, el sistema captura el error internamente y responde con un mensaje amable, evitando mostrar códigos de error técnicos al usuario final.
+- **Trazabilidad:** Todos los errores se siguen registrando en los logs del servidor para diagnóstico, pero la experiencia del usuario se mantiene profesional.
 
 ### SQL Requerido para Actualización:
 ```sql

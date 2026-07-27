@@ -49,29 +49,39 @@ export async function POST(req: Request) {
 
     // 3. Generate AI Response
     const dynamicPrompt = botConfig.generateSystemPrompt();
-    if (!dynamicPrompt) {
+    
+    // Si el bot está en modo "lavado de cerebro" o sin configuración
+    if (!dynamicPrompt || dynamicPrompt.trim() === "") {
       return NextResponse.json({ 
-        response: "Lo siento, el bot no está configurado actualmente.",
+        response: "¡Hola! En este momento nuestro asistente virtual está en mantenimiento para servirte mejor. Por favor, déjanos tu nombre y número de teléfono por aquí y un asesor humano te contactará lo antes posible.",
         role: 'assistant' 
       });
     }
 
-    const aiResponse = await generateAIResponse(conversation.id, message);
-    
-    if (aiResponse) {
-      // Save AI message
-      await supabaseAdmin.from('messages').insert({
-        conversation_id: conversation.id,
-        role: 'assistant',
-        content: aiResponse
-      });
+    try {
+      const aiResponse = await generateAIResponse(conversation.id, message);
+      
+      if (aiResponse) {
+        // Save AI message
+        await supabaseAdmin.from('messages').insert({
+          conversation_id: conversation.id,
+          role: 'assistant',
+          content: aiResponse
+        });
 
+        return NextResponse.json({ 
+          response: aiResponse,
+          role: 'assistant' 
+        });
+      } else {
+        throw new Error('Empty AI response');
+      }
+    } catch (aiError) {
+      console.error('[WebChat API] AI Generation Error:', aiError);
       return NextResponse.json({ 
-        response: aiResponse,
+        response: "Lo siento, estoy experimentando una breve interrupción técnica. Si tu solicitud es urgente, por favor facilítanos tus datos de contacto y te llamaremos en la brevedad posible.",
         role: 'assistant' 
       });
-    } else {
-      return NextResponse.json({ error: 'Failed to generate AI response' }, { status: 500 });
     }
 
   } catch (error: any) {
