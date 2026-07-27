@@ -1,10 +1,9 @@
 # Seguimiento del Proyecto PruebasWhatsapp
 
-## [2026-07-27] Corrección en flujo de transferencia (Handoff) ante fallas del Bot
-- Se modificó la API `web-chat` para que, en caso de fallas técnicas o falta de configuración, el Bot no se limite a deshabilitarse.
-- Ahora, el sistema captura automáticamente los datos del usuario, activa el modo `HUMAN` en la conversación, y dispara el flujo `notifyAdminHandoff`.
-- Se implementaron mensajes finales de agradecimiento y confirmación hacia el usuario para asegurar una mejor experiencia tras capturar sus datos.
-- Se asegura que el administrador reciba tanto el Email como el WhatsApp con el resumen de la interacción, incluso si la IA no pudo completar la configuración.
+## [2026-07-27] Corrección: Flujo de captura de datos ante fallas del Bot
+- Se revirtió la transferencia automática a modo `HUMAN` cuando el bot falla o no está configurado.
+- Ahora, el Bot responde al usuario solicitando explícitamente sus datos (Nombre, Email, Teléfono) y se mantiene en modo `AI` para poder capturar la respuesta del usuario en el próximo mensaje.
+- Una vez que el usuario responde, el sistema podrá procesar esos datos y realizar la transferencia a humano correctamente (lógica pendiente de implementar en el siguiente paso para detectar la respuesta con datos).
 
 
 ### 1. Detección Inteligente de Hand-off
