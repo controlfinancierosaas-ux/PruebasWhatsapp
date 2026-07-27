@@ -80,29 +80,29 @@ export async function POST(req: Request) {
     if (!dynamicPrompt || dynamicPrompt.trim() === "" || conversation.mode === 'CAPTURING_DATA') {
       
       // RE-FETCHING conversation to ensure we have the absolute latest mode/metadata 
-      // from the database in case of rapid messages
-      let { data: latestConv } = await supabaseAdmin
+      let { data: conv } = await supabaseAdmin
         .from('conversations')
         .select('*')
         .eq('id', conversation.id)
         .single();
       
-      const conv = latestConv || conversation;
+      if (!conv) conv = conversation;
+      
       const metadata = conv.metadata || {};
       let nextStep = metadata.step || 'NAME';
       let response = '';
       
-      console.log(`[DataCapture] Current Step: ${nextStep}, Input: ${message}, Metadata:`, metadata);
+      console.log(`[DataCapture DEBUG] ID: ${conv.id}, Input: "${message}", Mode: ${conv.mode}, Metadata:`, JSON.stringify(metadata));
 
-      if (nextStep === 'NAME' && message) {
+      if (message && nextStep === 'NAME') {
         metadata.name = message;
         nextStep = 'EMAIL';
         response = 'Gracias. Ahora, por favor indícame tu *Email*.';
-      } else if (nextStep === 'EMAIL' && message) {
+      } else if (message && nextStep === 'EMAIL') {
         metadata.email = message;
         nextStep = 'PHONE';
         response = 'Perfecto. Finalmente, indícame tu *Número de Teléfono* (incluyendo código de país).';
-      } else if (nextStep === 'PHONE' && message) {
+      } else if (message && nextStep === 'PHONE') {
         metadata.phone = message;
         
         // Datos completos
@@ -117,8 +117,16 @@ export async function POST(req: Request) {
         nextStep = 'NAME';
       }
 
-      console.log(`[DataCapture] Next Step: ${nextStep}, Metadata to Save:`, metadata);
-      await supabaseAdmin.from('conversations').update({ mode: 'CAPTURING_DATA', metadata: { ...metadata, step: nextStep } }).eq('id', conv.id);
+      console.log(`[DataCapture DEBUG] Next Step: ${nextStep}, Metadata to Save:`, JSON.stringify(metadata));
+      
+      const { error: updateError } = await supabaseAdmin
+        .from('conversations')
+        .update({ mode: 'CAPTURING_DATA', metadata: { ...metadata, step: nextStep } })
+        .eq('id', conv.id);
+
+      if (updateError) {
+        console.error('[DataCapture DEBUG] Error updating Supabase:', updateError);
+      }
       
       return NextResponse.json({ response, role: 'assistant', mode: 'AI' });
     }
