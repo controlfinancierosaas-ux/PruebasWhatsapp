@@ -1,6 +1,10 @@
 # Seguimiento del Proyecto PruebasWhatsapp
 
-## [2026-07-27] Implementación de Sistema de Transferencia a Humano y Notificaciones Inteligentes
+## [2026-07-27] Refactorización de Configuración y Separación de Ajustes
+- Se ha extraído la configuración del administrador (email de alertas, teléfono de WhatsApp) de la página general de configuración del Bot.
+- Se ha creado una nueva sección dedicada: "Configuración del Sistema", accesible a través del menú superior, centralizando únicamente los parámetros del administrador.
+- La configuración del Bot mantiene exclusivamente las instrucciones, comportamiento e identidad de la IA.
+
 
 ### 1. Detección Inteligente de Hand-off
 - **Activación por Intención:** Se implementó un detector de intención (`detectHandoffIntent`) usando OpenRouter que identifica cuando un usuario solicita explícitamente hablar con un humano o cuando expresa frustración/enojo significativo.
