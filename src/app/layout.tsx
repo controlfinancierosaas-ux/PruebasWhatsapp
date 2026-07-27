@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import WebChatWidget from "@/components/WebChatWidget";
 
 export const metadata: Metadata = {
   title: "WhatsApp Bot Dashboard",
@@ -15,6 +16,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="antialiased">
         {children}
+        <WebChatWidget />
       </body>
     </html>
   );

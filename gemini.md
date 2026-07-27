@@ -1,5 +1,30 @@
 # Seguimiento del Proyecto PruebasWhatsapp
 
+## [2026-07-27] Implementación de Web Chat Widget e Integración Híbrida
+
+### 1. Web Chat Widget (Floating UI)
+- **Nueva Funcionalidad:** Se implementó un widget de chat web (`WebChatWidget.tsx`) que permite a los usuarios interactuar con el bot directamente desde la página web, sin necesidad de WhatsApp.
+- **UI/UX:** El widget flota en la esquina inferior derecha, tiene animaciones suaves, indicador de "Escribiendo..." y mantiene el historial de la sesión localmente.
+- **Integración Global:** Se añadió al `RootLayout` para que esté disponible en toda la aplicación (o donde se incluya el layout).
+
+### 2. Backend API para Web Chat
+- **Ruta:** `src/app/api/web-chat/route.ts`.
+- **Lógica:** Recibe mensajes del widget web, identifica al usuario mediante un `sessionId` (prefijo `web:`), y utiliza la misma lógica de IA (`generateAIResponse`) que el bot de WhatsApp.
+- **Trazabilidad:** Las conversaciones web se guardan en la misma tabla `conversations` de Supabase, lo que permite gestionarlas y verlas desde el mismo dashboard que las de WhatsApp.
+
+### 3. Arquitectura Híbrida (WhatsApp + Web)
+- **Identificadores:** Se utiliza el campo `phone` como identificador universal. Los usuarios de WhatsApp usan su JID/Número, y los de la web usan `web:session_id`.
+- **Reutilización de Cerebro:** El bot utiliza el mismo "System Prompt" y personalidad configurada en el dashboard tanto para WhatsApp como para la Web, garantizando consistencia en las respuestas.
+
+### 4. Factibilidad Técnica y Configuración
+- **Estado:** Implementado y funcional.
+- **Pasos para integrar en otros sitios:**
+  1. Copiar el componente `WebChatWidget.tsx`.
+  2. Asegurarse de tener el endpoint `/api/web-chat` configurado.
+  3. El widget manejará automáticamente la creación de la sesión y la comunicación.
+
+---
+
 ## [2026-07-26] Corrección de Bucle de Conexión, Resolución de Contactos y Personalización Avanzada
 
 ### 1. Solución al Bucle de Conexión (UI)
