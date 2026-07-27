@@ -79,7 +79,16 @@ export async function POST(req: Request) {
     // Si el bot está en modo "lavado de cerebro" o sin configuración
     if (!dynamicPrompt || dynamicPrompt.trim() === "" || conversation.mode === 'CAPTURING_DATA') {
       
-      const metadata = conversation.metadata || {};
+      // RE-FETCHING conversation to ensure we have the absolute latest mode/metadata 
+      // from the database in case of rapid messages
+      let { data: latestConv } = await supabaseAdmin
+        .from('conversations')
+        .select('*')
+        .eq('id', conversation.id)
+        .single();
+      
+      const conv = latestConv || conversation;
+      const metadata = conv.metadata || {};
       let nextStep = metadata.step || 'NAME';
       let response = '';
       
@@ -97,8 +106,8 @@ export async function POST(req: Request) {
         metadata.phone = message;
         
         // Datos completos
-        await supabaseAdmin.from('conversations').update({ mode: 'HUMAN', metadata: { ...metadata, step: 'COMPLETED' } }).eq('id', conversation.id);
-        await notifyAdminHandoff(null, conversation.id, internalId);
+        await supabaseAdmin.from('conversations').update({ mode: 'HUMAN', metadata: { ...metadata, step: 'COMPLETED' } }).eq('id', conv.id);
+        await notifyAdminHandoff(null, conv.id, internalId);
         
         response = '¡Muchas gracias! He registrado tus datos correctamente. Nuestro equipo humano ha sido notificado y se pondrá en contacto contigo a la brevedad posible.';
         return NextResponse.json({ response, role: 'assistant', mode: 'HUMAN' });
@@ -109,7 +118,7 @@ export async function POST(req: Request) {
       }
 
       console.log(`[DataCapture] Next Step: ${nextStep}, Metadata to Save:`, metadata);
-      await supabaseAdmin.from('conversations').update({ mode: 'CAPTURING_DATA', metadata: { ...metadata, step: nextStep } }).eq('id', conversation.id);
+      await supabaseAdmin.from('conversations').update({ mode: 'CAPTURING_DATA', metadata: { ...metadata, step: nextStep } }).eq('id', conv.id);
       
       return NextResponse.json({ response, role: 'assistant', mode: 'AI' });
     }
