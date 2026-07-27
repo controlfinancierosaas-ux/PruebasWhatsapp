@@ -146,9 +146,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-
-  } catch (error: any) {
-    console.error('[WebChat API] Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
