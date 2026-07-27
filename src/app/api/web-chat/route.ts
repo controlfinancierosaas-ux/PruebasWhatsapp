@@ -91,37 +91,42 @@ export async function POST(req: Request) {
       if (!conv) conv = conversation;
       
       const metadata = conv.metadata || {};
-      let nextStep = metadata.step || 'NAME';
+      const currentStep = metadata.step || 'START';
+      let nextStep = 'NAME';
       let response = '';
       
-      console.log(`[DataCapture DEBUG] ID: ${conv.id}, Input: "${message}", Mode: ${conv.mode}, Metadata:`, JSON.stringify(metadata));
+      console.log(`[DataCapture DEBUG] Step: ${currentStep}, Input: "${message}"`);
 
-      if (message && nextStep === 'NAME') {
-        metadata.name = message;
-        nextStep = 'EMAIL';
-        response = 'Gracias. Ahora, por favor indícame tu *Email*.';
-      } else if (message && nextStep === 'EMAIL') {
-        metadata.email = message;
-        nextStep = 'PHONE';
-        response = 'Perfecto. Finalmente, indícame tu *Número de Teléfono* (incluyendo código de país).';
-      } else if (message && nextStep === 'PHONE') {
-        metadata.phone = message;
-        
-        // Datos completos
-        await supabaseAdmin.from('conversations').update({ mode: 'HUMAN', metadata: { ...metadata, step: 'COMPLETED' } }).eq('id', conv.id);
-        await notifyAdminHandoff(null, conv.id, internalId);
-        
-        response = '¡Muchas gracias! He registrado tus datos correctamente. Nuestro equipo humano ha sido notificado y se pondrá en contacto contigo a la brevedad posible.';
-        return NextResponse.json({ response, role: 'assistant', mode: 'HUMAN' });
+      // IF already capturing (e.g., waiting for name, email, etc.)
+      if (conv.mode === 'CAPTURING_DATA') {
+        if (currentStep === 'NAME') {
+          metadata.name = message;
+          nextStep = 'EMAIL';
+          response = 'Gracias. Ahora, por favor indícame tu *Email*.';
+        } else if (currentStep === 'EMAIL') {
+          metadata.email = message;
+          nextStep = 'PHONE';
+          response = 'Perfecto. Finalmente, indícame tu *Número de Teléfono*.';
+        } else if (currentStep === 'PHONE') {
+          metadata.phone = message;
+          
+          await supabaseAdmin.from('conversations').update({ mode: 'HUMAN', metadata: { ...metadata, step: 'COMPLETED' } }).eq('id', conv.id);
+          await notifyAdminHandoff(null, conv.id, internalId);
+          
+          response = '¡Muchas gracias! He registrado tus datos correctamente. Nuestro equipo humano ha sido notificado y se pondrá en contacto contigo a la brevedad posible.';
+          return NextResponse.json({ response, role: 'assistant', mode: 'HUMAN' });
+        }
       } else {
-        // Primera vez o mensaje inválido
-        response = '¡Hola! Parece que tenemos problemas técnicos. Por favor, para poder ayudarte, indícame primero tu *Nombre completo*.';
+        // FIRST TIME, just asking for Name
+        response = '¡Hola! Parece que tenemos problemas técnicos. Para poder ayudarte, indícame tu *Nombre completo*.';
         nextStep = 'NAME';
+        await supabaseAdmin.from('conversations').update({ mode: 'CAPTURING_DATA', metadata: { step: 'NAME' } }).eq('id', conv.id);
+        return NextResponse.json({ response, role: 'assistant', mode: 'AI' });
       }
 
-      console.log(`[DataCapture DEBUG] Next Step: ${nextStep}, Metadata to Save:`, JSON.stringify(metadata));
+      console.log(`[DataCapture DEBUG] Moving to: ${nextStep}, Saved Metadata:`, JSON.stringify(metadata));
       
-      await supabaseAdmin.from('conversations').update({ mode: 'CAPTURING_DATA', metadata: { ...metadata, step: nextStep } }).eq('id', conv.id);
+      await supabaseAdmin.from('conversations').update({ metadata: { ...metadata, step: nextStep } }).eq('id', conv.id);
       
       return NextResponse.json({ response, role: 'assistant', mode: 'AI' });
     }
