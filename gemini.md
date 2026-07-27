@@ -1,9 +1,10 @@
 # Seguimiento del Proyecto PruebasWhatsapp
 
-## [2026-07-27] Refactorización de Configuración y Separación de Ajustes
-- Se ha extraído la configuración del administrador (email de alertas, teléfono de WhatsApp) de la página general de configuración del Bot.
-- Se ha creado una nueva sección dedicada: "Configuración del Sistema", accesible a través del menú superior, centralizando únicamente los parámetros del administrador.
-- La configuración del Bot mantiene exclusivamente las instrucciones, comportamiento e identidad de la IA.
+## [2026-07-27] Corrección en flujo de transferencia (Handoff) ante fallas del Bot
+- Se modificó la API `web-chat` para que, en caso de fallas técnicas o falta de configuración, el Bot no se limite a deshabilitarse.
+- Ahora, el sistema captura automáticamente los datos del usuario, activa el modo `HUMAN` en la conversación, y dispara el flujo `notifyAdminHandoff`.
+- Se implementaron mensajes finales de agradecimiento y confirmación hacia el usuario para asegurar una mejor experiencia tras capturar sus datos.
+- Se asegura que el administrador reciba tanto el Email como el WhatsApp con el resumen de la interacción, incluso si la IA no pudo completar la configuración.
 
 
 ### 1. Detección Inteligente de Hand-off
