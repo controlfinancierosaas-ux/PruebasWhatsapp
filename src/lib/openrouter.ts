@@ -74,14 +74,14 @@ export const generateConversationSummary = async (conversationId: string) => {
 
     if (!history || history.length === 0) return 'Sin historial previo.';
 
-    const conversationText = history.map(m => \`\${m.role === 'user' ? 'Usuario' : 'Bot'}: \${m.content}\`).join('\n');
+    const conversationText = history.map(m => `${m.role === 'user' ? 'Usuario' : 'Bot'}: ${m.content}`).join('\n');
 
-    const prompt = \`Analiza la siguiente conversación entre un Bot y un Usuario. 
+    const prompt = `Analiza la siguiente conversación entre un Bot y un Usuario. 
     Realiza un resumen ejecutivo de máximo 3 párrafos explicando de qué trató la conversación, 
     cuáles eran las dudas del usuario y por qué se requiere atención humana ahora.
     
     CONVERSACIÓN:
-    \${conversationText}\`;
+    ${conversationText}`;
 
     const completion = await openai.chat.completions.create({
       model,
@@ -102,7 +102,7 @@ export const detectHandoffIntent = async (userMessage: string) => {
     const openai = getOpenAI();
     const model = DEFAULT_MODEL;
 
-    const prompt = \`Analiza el siguiente mensaje de un usuario en un chat de WhatsApp. 
+    const prompt = `Analiza el siguiente mensaje de un usuario en un chat de WhatsApp. 
     Determina si el usuario:
     1. Solicita explícitamente hablar con un humano, asesor, persona o operador.
     2. Expresa frustración, enojo, ira o malestar significativo (insultos, quejas graves).
@@ -111,7 +111,7 @@ export const detectHandoffIntent = async (userMessage: string) => {
     Responde ÚNICAMENTE con la palabra "TRANSFERIR" si se cumple alguna de las anteriores, 
     o "CONTINUAR" si el bot puede seguir manejando la conversación.
     
-    MENSAJE DEL USUARIO: "\${userMessage}"\`;
+    MENSAJE DEL USUARIO: "${userMessage}"`;
 
     const completion = await openai.chat.completions.create({
       model,
