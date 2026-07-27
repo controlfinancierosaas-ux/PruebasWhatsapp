@@ -26,7 +26,7 @@ export const handleMessage = async (sock: WASocket, msg: WAMessage) => {
     } catch (e) {}
   }
 
-  console.log(\`[Message] From: \${internalId}, Content: \${content}\`);
+  console.log(`[Message] From: ${internalId}, Content: ${content}`);
 
   // 2. Get or create conversation
   let { data: conversation } = await supabaseAdmin
@@ -71,7 +71,7 @@ export const handleMessage = async (sock: WASocket, msg: WAMessage) => {
 
   // 5. IF in HUMAN mode, stop here (unless it's a specific reactivate command, but that's handled in dashboard)
   if (conversation.mode === 'HUMAN') {
-    console.log(\`[AI] Skipped - Conversation is in HUMAN mode for \${internalId}\`);
+    console.log(`[AI] Skipped - Conversation is in HUMAN mode for ${internalId}`);
     return;
   }
 
@@ -79,19 +79,18 @@ export const handleMessage = async (sock: WASocket, msg: WAMessage) => {
   const shouldTransfer = await detectHandoffIntent(content);
 
   if (shouldTransfer) {
-    console.log(\`[Handoff] Intent detected for \${internalId}. Transferring...\`);
+    console.log(`[Handoff] Intent detected for ${internalId}. Transferring...`);
     await performHandoff(sock, conversation, remoteJid);
     return;
   }
 
   // 7. If global AI is enabled AND conversation mode is AI, generate response
   if (isGlobalAIEnabled && conversation.mode === 'AI') {
-    const config = botConfig.getConfig();
     const dynamicPrompt = botConfig.generateSystemPrompt();
 
     // Si el prompt está vacío, el bot está en modo "lavado de cerebro" (limpio)
     if (!dynamicPrompt || dynamicPrompt.trim() === "") {
-      console.log(\`[AI] Bot is unconfigured/neutral. Prompting for data and transferring.\`);
+      console.log(`[AI] Bot is unconfigured/neutral. Prompting for data and transferring.`);
       await handleUnconfiguredFlow(sock, conversation, remoteJid);
       return;
     }
@@ -112,11 +111,11 @@ export const handleMessage = async (sock: WASocket, msg: WAMessage) => {
         throw new Error('Empty AI response');
       }
     } catch (e) {
-      console.error(\`[AI] Error generating response for \${internalId}:\`, e);
+      console.error(`[AI] Error generating response for ${internalId}:`, e);
       await handleUnconfiguredFlow(sock, conversation, remoteJid, true);
     }
   } else {
-    console.log(\`[AI] Skipped (Global: \${isGlobalAIEnabled}, Chat: \${conversation.mode})\`);
+    console.log(`[AI] Skipped (Global: ${isGlobalAIEnabled}, Chat: ${conversation.mode})`);
   }
 };
 
@@ -149,7 +148,7 @@ async function handleUnconfiguredFlow(sock: WASocket, conversation: any, remoteJ
     ? "Lo siento, estoy teniendo dificultades técnicas para procesar tu solicitud."
     : "¡Hola! Mi sistema aún no ha sido configurado completamente.";
     
-  const requestInfo = "\\n\\nPara que un asesor humano pueda ayudarte mejor, por favor indícame tu *Nombre completo* y *Correo electrónico*. En breve te contactaremos.";
+  const requestInfo = "\n\nPara que un asesor humano pueda ayudarte mejor, por favor indícame tu *Nombre completo* y *Correo electrónico*. En breve te contactaremos.";
   
   await sock.sendMessage(remoteJid, { text: apology + requestInfo });
 
