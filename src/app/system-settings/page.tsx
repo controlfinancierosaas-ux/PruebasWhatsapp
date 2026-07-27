@@ -69,7 +69,7 @@ export default function SystemSettingsPage() {
           <div className="bg-white p-8 rounded-2xl shadow-sm border border-emerald-200 ring-4 ring-emerald-50/50">
             <h2 className="text-xs font-black text-emerald-600 uppercase tracking-[0.2em] mb-8 flex items-center gap-2">
               <span className="h-4 w-1 bg-emerald-500 rounded-full"></span>
-              INFORMACIÓN DEL ADMINISTRADOR (ALERTAS)
+              INFORMACIÓN DEL ADMINISTRADOR
             </h2>
             
             <div className="space-y-6">
@@ -82,7 +82,6 @@ export default function SystemSettingsPage() {
                   placeholder="admin@ejemplo.com"
                   className="w-full rounded-xl border-gray-200 border p-3 outline-none focus:ring-2 focus:ring-emerald-500"
                 />
-                <p className="mt-1 text-[10px] text-gray-400 italic">Se enviará un resumen de la conversación cuando el bot pase a modo humano.</p>
               </div>
               
               <div>
