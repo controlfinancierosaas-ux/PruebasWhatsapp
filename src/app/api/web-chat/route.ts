@@ -82,16 +82,18 @@ export async function POST(req: Request) {
       const metadata = conversation.metadata || {};
       let nextStep = metadata.step || 'NAME';
       let response = '';
+      
+      console.log(`[DataCapture] Current Step: ${nextStep}, Input: ${message}, Metadata:`, metadata);
 
-      if (message && nextStep === 'NAME') {
+      if (nextStep === 'NAME' && message) {
         metadata.name = message;
         nextStep = 'EMAIL';
         response = 'Gracias. Ahora, por favor indícame tu *Email*.';
-      } else if (message && nextStep === 'EMAIL') {
+      } else if (nextStep === 'EMAIL' && message) {
         metadata.email = message;
         nextStep = 'PHONE';
         response = 'Perfecto. Finalmente, indícame tu *Número de Teléfono* (incluyendo código de país).';
-      } else if (message && nextStep === 'PHONE') {
+      } else if (nextStep === 'PHONE' && message) {
         metadata.phone = message;
         
         // Datos completos
@@ -106,6 +108,7 @@ export async function POST(req: Request) {
         nextStep = 'NAME';
       }
 
+      console.log(`[DataCapture] Next Step: ${nextStep}, Metadata to Save:`, metadata);
       await supabaseAdmin.from('conversations').update({ mode: 'CAPTURING_DATA', metadata: { ...metadata, step: nextStep } }).eq('id', conversation.id);
       
       return NextResponse.json({ response, role: 'assistant', mode: 'AI' });
