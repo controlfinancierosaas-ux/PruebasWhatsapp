@@ -78,18 +78,16 @@ export async function POST(req: Request) {
     
     // Si el bot está en modo "lavado de cerebro" o sin configuración
     if (!dynamicPrompt || dynamicPrompt.trim() === "") {
-      const fallbackMsg = "¡Hola! He registrado tus datos correctamente. Nuestro equipo humano ha sido notificado y se pondrá en contacto contigo a la brevedad posible. ¡Gracias por tu paciencia!";
+      const fallbackMsg = "¡Hola! Mi sistema aún no ha sido configurado completamente. Para que un asesor humano pueda ayudarte mejor, por favor indícame tu *Nombre completo*, *Email* y *Teléfono*. En breve te contactaremos.";
       
-      // Actualizar a modo humano
-      await supabaseAdmin.from('conversations').update({ mode: 'HUMAN' }).eq('id', conversation.id);
+      // Mantenemos al usuario en modo AI momentáneamente para capturar sus datos en el próximo mensaje
+      // O si preferimos transferir, entonces capturamos aquí pero pedimos explícitamente.
+      // La lógica actual transfiere a HUMAN y luego no procesa más el mensaje de datos.
       
-      // Notificar al admin (con los datos que el usuario probablemente ya ingresó)
-      await notifyAdminHandoff(null, conversation.id, internalId);
-
       return NextResponse.json({ 
         response: fallbackMsg,
         role: 'assistant',
-        mode: 'HUMAN'
+        mode: 'AI' // Mantenemos en AI para que el usuario pueda responder con sus datos
       });
     }
 
@@ -113,15 +111,12 @@ export async function POST(req: Request) {
       }
     } catch (aiError) {
       console.error('[WebChat API] AI Generation Error:', aiError);
-      const errorFallback = "¡Entendido! He registrado tu información. He notificado a nuestro equipo humano sobre tu solicitud para que te contacten cuanto antes. ¡Gracias!";
+      const errorFallback = "Lo siento, estoy teniendo dificultades técnicas para procesar tu solicitud. Por favor indícame tu *Nombre*, *Email* y *Teléfono* para que un asesor te contacte personalmente.";
       
-      await supabaseAdmin.from('conversations').update({ mode: 'HUMAN' }).eq('id', conversation.id);
-      await notifyAdminHandoff(null, conversation.id, internalId);
-
       return NextResponse.json({ 
         response: errorFallback,
         role: 'assistant',
-        mode: 'HUMAN'
+        mode: 'AI' // Mantenemos en AI para poder capturar la respuesta del usuario con sus datos
       });
     }
 
