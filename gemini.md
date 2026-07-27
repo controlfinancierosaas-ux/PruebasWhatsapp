@@ -1,9 +1,10 @@
 # Seguimiento del Proyecto PruebasWhatsapp
 
-## [2026-07-27] Corrección: Flujo de captura de datos ante fallas del Bot
-- Se revirtió la transferencia automática a modo `HUMAN` cuando el bot falla o no está configurado.
-- Ahora, el Bot responde al usuario solicitando explícitamente sus datos (Nombre, Email, Teléfono) y se mantiene en modo `AI` para poder capturar la respuesta del usuario en el próximo mensaje.
-- Una vez que el usuario responde, el sistema podrá procesar esos datos y realizar la transferencia a humano correctamente (lógica pendiente de implementar en el siguiente paso para detectar la respuesta con datos).
+## [2026-07-27] Corrección: Flujo de captura de datos paso a paso ante fallas del Bot
+- Se implementó un sistema de estado (`CAPTURING_DATA`) en la API para manejar la captura de datos del usuario de forma secuencial (Nombre -> Email -> Teléfono) cuando el bot falla o no está configurado.
+- El bot ahora solicita un dato a la vez y espera la respuesta del usuario, evitando el bucle de mensajes de error.
+- Una vez capturados todos los datos, el sistema actualiza la conversación a modo `HUMAN` y dispara el flujo de notificación (`notifyAdminHandoff`) incluyendo los datos capturados en el resumen.
+- Se mantiene el modo `AI` mientras se capturan los datos para permitir la interacción del usuario.
 
 
 ### 1. Detección Inteligente de Hand-off
