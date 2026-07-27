@@ -228,7 +228,10 @@ export default function SettingsPage() {
       <main className="flex-1 overflow-y-auto p-8">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-8">
-            <h1 className="text-2xl font-bold text-gray-800 tracking-tight uppercase">Configuración Maestra del Bot</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-gray-800 tracking-tight uppercase">Configuración Maestra del Bot</h1>
+              <span className="bg-emerald-100 text-emerald-700 text-[9px] font-black px-2 py-1 rounded-full uppercase tracking-widest">v2.1 - Handoff Activo</span>
+            </div>
             <div className="flex items-center gap-4">
               <button 
                 onClick={handleReset}
@@ -416,11 +419,11 @@ export default function SettingsPage() {
                 />
               </div>
 
-              {/* Sección 7: Notificaciones */}
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100">
+              {/* Sección 7: Alertas y Notificaciones */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-emerald-200 ring-4 ring-emerald-50/50">
                 <h2 className="text-xs font-black text-emerald-600 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
                   <span className="h-4 w-1 bg-emerald-500 rounded-full"></span>
-                  7. CONFIGURACIÓN DE NOTIFICACIONES (ADMIN)
+                  7. CONFIGURACIÓN DE NOTIFICACIONES (ADMIN) 🔔
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
