@@ -77,18 +77,38 @@ export async function POST(req: Request) {
     const dynamicPrompt = botConfig.generateSystemPrompt();
     
     // Si el bot está en modo "lavado de cerebro" o sin configuración
-    if (!dynamicPrompt || dynamicPrompt.trim() === "") {
-      const fallbackMsg = "¡Hola! Mi sistema aún no ha sido configurado completamente. Para que un asesor humano pueda ayudarte mejor, por favor indícame tu *Nombre completo*, *Email* y *Teléfono*. En breve te contactaremos.";
+    if (!dynamicPrompt || dynamicPrompt.trim() === "" || conversation.mode === 'CAPTURING_DATA') {
       
-      // Mantenemos al usuario en modo AI momentáneamente para capturar sus datos en el próximo mensaje
-      // O si preferimos transferir, entonces capturamos aquí pero pedimos explícitamente.
-      // La lógica actual transfiere a HUMAN y luego no procesa más el mensaje de datos.
+      const metadata = conversation.metadata || {};
+      let nextStep = metadata.step || 'NAME';
+      let response = '';
+
+      if (message && nextStep === 'NAME') {
+        metadata.name = message;
+        nextStep = 'EMAIL';
+        response = 'Gracias. Ahora, por favor indícame tu *Email*.';
+      } else if (message && nextStep === 'EMAIL') {
+        metadata.email = message;
+        nextStep = 'PHONE';
+        response = 'Perfecto. Finalmente, indícame tu *Número de Teléfono* (incluyendo código de país).';
+      } else if (message && nextStep === 'PHONE') {
+        metadata.phone = message;
+        
+        // Datos completos
+        await supabaseAdmin.from('conversations').update({ mode: 'HUMAN', metadata: { ...metadata, step: 'COMPLETED' } }).eq('id', conversation.id);
+        await notifyAdminHandoff(null, conversation.id, internalId);
+        
+        response = '¡Muchas gracias! He registrado tus datos correctamente. Nuestro equipo humano ha sido notificado y se pondrá en contacto contigo a la brevedad posible.';
+        return NextResponse.json({ response, role: 'assistant', mode: 'HUMAN' });
+      } else {
+        // Primera vez o mensaje inválido
+        response = '¡Hola! Parece que tenemos problemas técnicos. Por favor, para poder ayudarte, indícame primero tu *Nombre completo*.';
+        nextStep = 'NAME';
+      }
+
+      await supabaseAdmin.from('conversations').update({ mode: 'CAPTURING_DATA', metadata: { ...metadata, step: nextStep } }).eq('id', conversation.id);
       
-      return NextResponse.json({ 
-        response: fallbackMsg,
-        role: 'assistant',
-        mode: 'AI' // Mantenemos en AI para que el usuario pueda responder con sus datos
-      });
+      return NextResponse.json({ response, role: 'assistant', mode: 'AI' });
     }
 
     try {
@@ -111,12 +131,14 @@ export async function POST(req: Request) {
       }
     } catch (aiError) {
       console.error('[WebChat API] AI Generation Error:', aiError);
-      const errorFallback = "Lo siento, estoy teniendo dificultades técnicas para procesar tu solicitud. Por favor indícame tu *Nombre*, *Email* y *Teléfono* para que un asesor te contacte personalmente.";
+      // Fallback a captura de datos si falla la AI
+      await supabaseAdmin.from('conversations').update({ mode: 'CAPTURING_DATA', metadata: { step: 'NAME' } }).eq('id', conversation.id);
+      const errorFallback = "Lo siento, tengo dificultades técnicas. Para que un asesor te contacte, por favor indícame tu *Nombre completo*.";
       
       return NextResponse.json({ 
         response: errorFallback,
         role: 'assistant',
-        mode: 'AI' // Mantenemos en AI para poder capturar la respuesta del usuario con sus datos
+        mode: 'AI'
       });
     }
 
