@@ -22,7 +22,6 @@ export const generateAIResponse = async (conversationId: string, userMessage: st
     const openai = getOpenAI();
     const model = process.env.AI_MODEL || DEFAULT_MODEL;
     console.log(`[OpenRouter] Using model: ${model}`);
-...
 
     // Fetch last 10 messages for better context
     const { data: history } = await supabaseAdmin
